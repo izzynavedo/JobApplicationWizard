@@ -64,6 +64,18 @@ struct JobLabel: Codable, Identifiable, Hashable, Equatable {
     }
 }
 
+// MARK: - Note
+
+struct Note: Codable, Identifiable, Equatable {
+    var id: UUID = UUID()
+    var title: String = ""
+    var subtitle: String = ""
+    var body: String = ""
+    var tags: [String] = []
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
+}
+
 // MARK: - Contact
 
 struct Contact: Codable, Identifiable, Equatable {
@@ -101,7 +113,7 @@ struct JobApplication: Codable, Identifiable, Equatable {
     var salary: String = ""
     var location: String = ""
     var jobDescription: String = ""
-    var notes: String = ""
+    var noteCards: [Note] = []
     var resumeUsed: String = ""
     var coverLetter: String = ""
     var labels: [JobLabel] = []
@@ -118,6 +130,73 @@ struct JobApplication: Codable, Identifiable, Equatable {
 
     var displayCompany: String {
         company.isEmpty ? "Unknown Company" : company
+    }
+
+    init() {}
+
+    // Custom decoder: tolerates missing keys (all default) and migrates
+    // legacy `notes: String` into a noteCard.
+    private enum CodingKeys: String, CodingKey {
+        case id, company, title, url, status, dateAdded, dateApplied
+        case salary, location, jobDescription, noteCards
+        case resumeUsed, coverLetter, labels, contacts, interviews
+        case isFavorite, excitement, hasPDF, pdfPath
+        case legacyNotes = "notes"
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id           = try c.decodeIfPresent(UUID.self,            forKey: .id)           ?? UUID()
+        company      = try c.decodeIfPresent(String.self,          forKey: .company)      ?? ""
+        title        = try c.decodeIfPresent(String.self,          forKey: .title)        ?? ""
+        url          = try c.decodeIfPresent(String.self,          forKey: .url)          ?? ""
+        status       = try c.decodeIfPresent(JobStatus.self,       forKey: .status)       ?? .wishlist
+        dateAdded    = try c.decodeIfPresent(Date.self,            forKey: .dateAdded)    ?? Date()
+        dateApplied  = try c.decodeIfPresent(Date.self,            forKey: .dateApplied)
+        salary       = try c.decodeIfPresent(String.self,          forKey: .salary)       ?? ""
+        location     = try c.decodeIfPresent(String.self,          forKey: .location)     ?? ""
+        jobDescription = try c.decodeIfPresent(String.self,        forKey: .jobDescription) ?? ""
+        resumeUsed   = try c.decodeIfPresent(String.self,          forKey: .resumeUsed)   ?? ""
+        coverLetter  = try c.decodeIfPresent(String.self,          forKey: .coverLetter)  ?? ""
+        labels       = try c.decodeIfPresent([JobLabel].self,      forKey: .labels)       ?? []
+        contacts     = try c.decodeIfPresent([Contact].self,       forKey: .contacts)     ?? []
+        interviews   = try c.decodeIfPresent([InterviewRound].self, forKey: .interviews)  ?? []
+        isFavorite   = try c.decodeIfPresent(Bool.self,            forKey: .isFavorite)   ?? false
+        excitement   = try c.decodeIfPresent(Int.self,             forKey: .excitement)   ?? 3
+        hasPDF       = try c.decodeIfPresent(Bool.self,            forKey: .hasPDF)       ?? false
+        pdfPath      = try c.decodeIfPresent(String.self,          forKey: .pdfPath)
+
+        if let cards = try c.decodeIfPresent([Note].self, forKey: .noteCards) {
+            noteCards = cards
+        } else if let old = try c.decodeIfPresent(String.self, forKey: .legacyNotes), !old.isEmpty {
+            noteCards = [Note(title: "Notes", body: old)]
+        } else {
+            noteCards = []
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id,             forKey: .id)
+        try c.encode(company,        forKey: .company)
+        try c.encode(title,          forKey: .title)
+        try c.encode(url,            forKey: .url)
+        try c.encode(status,         forKey: .status)
+        try c.encode(dateAdded,      forKey: .dateAdded)
+        try c.encodeIfPresent(dateApplied, forKey: .dateApplied)
+        try c.encode(salary,         forKey: .salary)
+        try c.encode(location,       forKey: .location)
+        try c.encode(jobDescription, forKey: .jobDescription)
+        try c.encode(noteCards,      forKey: .noteCards)
+        try c.encode(resumeUsed,     forKey: .resumeUsed)
+        try c.encode(coverLetter,    forKey: .coverLetter)
+        try c.encode(labels,         forKey: .labels)
+        try c.encode(contacts,       forKey: .contacts)
+        try c.encode(interviews,     forKey: .interviews)
+        try c.encode(isFavorite,     forKey: .isFavorite)
+        try c.encode(excitement,     forKey: .excitement)
+        try c.encode(hasPDF,         forKey: .hasPDF)
+        try c.encodeIfPresent(pdfPath, forKey: .pdfPath)
     }
 }
 

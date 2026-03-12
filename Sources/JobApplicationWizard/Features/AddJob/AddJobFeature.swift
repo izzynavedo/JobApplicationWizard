@@ -13,7 +13,6 @@ struct AddJobFeature {
         var status: JobStatus = .wishlist
         var excitement: Int = 3
         var jobDescription = ""
-        var notes = ""
         var selectedLabelNames: Set<String> = []
 
         var canSave: Bool { !company.isEmpty || !title.isEmpty }
@@ -28,7 +27,6 @@ struct AddJobFeature {
             job.status = status
             job.excitement = excitement
             job.jobDescription = jobDescription
-            job.notes = notes
             job.labels = JobLabel.presets.filter { selectedLabelNames.contains($0.name) }
             if status == .applied { job.dateApplied = Date() }
             return job

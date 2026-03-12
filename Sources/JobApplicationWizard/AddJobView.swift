@@ -83,10 +83,6 @@ struct AddJobView: View {
                     Text("Job Description")
                 }
 
-                Section("Notes") {
-                    TextEditor(text: $store.notes)
-                        .frame(minHeight: 80)
-                }
             }
             .formStyle(.grouped)
         }

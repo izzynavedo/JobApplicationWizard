@@ -15,7 +15,7 @@ struct JobDetailFeature {
         var location: String
         var salary: String
         var url: String
-        var notes: String
+        var noteCards: [Note]
         var jobDescription: String
         var resumeUsed: String
         var labels: [JobLabel]
@@ -55,7 +55,7 @@ struct JobDetailFeature {
             self.location = job.location
             self.salary = job.salary
             self.url = job.url
-            self.notes = job.notes
+            self.noteCards = job.noteCards
             self.jobDescription = job.jobDescription
             self.resumeUsed = job.resumeUsed
             self.labels = job.labels
@@ -71,7 +71,7 @@ struct JobDetailFeature {
             job.location = location
             job.salary = salary
             job.url = url
-            job.notes = notes
+            job.noteCards = noteCards
             job.jobDescription = jobDescription
             job.resumeUsed = resumeUsed
             job.labels = labels
@@ -90,6 +90,9 @@ struct JobDetailFeature {
         case deleteTapped
         case deleteConfirmed
         case deleteCancelled
+        // Notes
+        case addNote
+        case deleteNote(UUID)
         // Contacts / Interviews
         case addContact
         case deleteContact(IndexSet)
@@ -163,6 +166,16 @@ struct JobDetailFeature {
             case .deleteCancelled:
                 state.showDeleteConfirm = false
                 return .none
+
+            case .addNote:
+                state.noteCards.insert(Note(), at: 0)
+                state.syncJobFromFields()
+                return .send(.delegate(.jobUpdated(state.job)))
+
+            case .deleteNote(let id):
+                state.noteCards.removeAll { $0.id == id }
+                state.syncJobFromFields()
+                return .send(.delegate(.jobUpdated(state.job)))
 
             case .addContact:
                 state.contacts.append(Contact())

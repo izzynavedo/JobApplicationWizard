@@ -93,7 +93,7 @@ struct JobDetailView: View {
 
             HStack {
                 Label(store.job.status.rawValue, systemImage: store.job.status.icon)
-                    .font(.caption).fontWeight(.semibold)
+                    .font(.footnote).fontWeight(.semibold)
                     .padding(.horizontal, 10).padding(.vertical, 4)
                     .background(store.job.status.color.opacity(0.15))
                     .foregroundColor(store.job.status.color)
@@ -102,10 +102,10 @@ struct JobDetailView: View {
                 Spacer()
 
                 HStack(spacing: 4) {
-                    Text("Excitement:").font(.caption).foregroundColor(.secondary)
+                    Text("Excitement:").font(.footnote).foregroundColor(.secondary)
                     ForEach(1...5, id: \.self) { i in
                         Image(systemName: i <= store.job.excitement ? "star.fill" : "star")
-                            .font(.caption).foregroundColor(.orange)
+                            .font(.footnote).foregroundColor(.orange)
                             .onTapGesture { store.send(.setExcitement(i)) }
                     }
                 }
@@ -117,7 +117,7 @@ struct JobDetailView: View {
                         ForEach(store.job.labels) { label in
                             HStack(spacing: 3) {
                                 Circle().fill(label.color).frame(width: 6, height: 6)
-                                Text(label.name).font(.caption)
+                                Text(label.name).font(.footnote)
                             }
                             .padding(.horizontal, 8).padding(.vertical, 3)
                             .background(label.color.opacity(0.12)).clipShape(Capsule())
@@ -167,23 +167,23 @@ struct OverviewTab: View {
                     VStack(spacing: 0) {
                         HStack {
                             Label("Added", systemImage: "plus.circle")
-                                .font(.callout).foregroundColor(.secondary).frame(width: 120, alignment: .leading)
-                            Text(store.job.dateAdded.formatted(date: .abbreviated, time: .omitted)).font(.callout)
+                                .font(.subheadline).foregroundColor(.secondary).frame(width: 120, alignment: .leading)
+                            Text(store.job.dateAdded.formatted(date: .abbreviated, time: .omitted)).font(.subheadline)
                         }
                         .padding(.vertical, 7).padding(.horizontal, 8)
                         Divider()
                         HStack {
                             Label("Applied", systemImage: "paperplane")
-                                .font(.callout).foregroundColor(.secondary).frame(width: 120, alignment: .leading)
+                                .font(.subheadline).foregroundColor(.secondary).frame(width: 120, alignment: .leading)
                             if let applied = store.job.dateApplied {
-                                Text(applied.formatted(date: .abbreviated, time: .omitted)).font(.callout)
+                                Text(applied.formatted(date: .abbreviated, time: .omitted)).font(.subheadline)
                             } else {
-                                Text("Not yet applied").font(.callout).foregroundColor(.secondary)
+                                Text("Not yet applied").font(.subheadline).foregroundColor(.secondary)
                             }
                             Spacer()
                             if store.job.dateApplied == nil {
                                 Button("Mark Applied") { store.send(.markApplied) }
-                                    .font(.callout).buttonStyle(.bordered).controlSize(.mini)
+                                    .font(.subheadline).buttonStyle(.bordered).controlSize(.mini)
                             }
                         }
                         .padding(.vertical, 7).padding(.horizontal, 8)
@@ -194,11 +194,11 @@ struct OverviewTab: View {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Label("Resume Version", systemImage: "doc.fill")
-                                .font(.callout).foregroundColor(.secondary)
+                                .font(.subheadline).foregroundColor(.secondary)
                             Spacer()
                         }
                         TextField("e.g. resume_v3_tailored.pdf", text: $store.resumeUsed)
-                            .textFieldStyle(.roundedBorder).font(.callout)
+                            .textFieldStyle(.roundedBorder).font(.subheadline)
                     }
                     .padding(4)
                 }
@@ -222,7 +222,7 @@ struct DetailRow<Content: View>: View {
     var body: some View {
         HStack {
             Label(label, systemImage: icon)
-                .font(.callout).foregroundColor(.secondary)
+                .font(.subheadline).foregroundColor(.secondary)
                 .frame(width: 110, alignment: .leading)
             content().font(.body)
         }
@@ -242,7 +242,7 @@ struct LabelsEditor: View {
             FlowLayout(spacing: 6) {
                 ForEach(labels) { label in
                     HStack(spacing: 3) {
-                        Text(label.name).font(.caption)
+                        Text(label.name).font(.footnote)
                         Button {
                             labels.removeAll { $0.id == label.id }
                         } label: {
@@ -256,12 +256,12 @@ struct LabelsEditor: View {
                 }
             }
 
-            Text("Quick add:").font(.caption2).foregroundColor(.secondary)
+            Text("Quick add:").font(.footnote).foregroundColor(.secondary)
             FlowLayout(spacing: 4) {
                 ForEach(JobLabel.presets.filter { p in !labels.contains { $0.name == p.name } }) { preset in
                     Button { labels.append(preset) } label: {
                         Text("+ \(preset.name)")
-                            .font(.caption2).padding(.horizontal, 6).padding(.vertical, 2)
+                            .font(.footnote).padding(.horizontal, 6).padding(.vertical, 2)
                             .background(Color.secondary.opacity(0.1)).clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -275,7 +275,7 @@ struct LabelsEditor: View {
                     .fixedSize()
                 TextField("Custom label...", text: $customName)
                     .textFieldStyle(.roundedBorder)
-                    .font(.caption)
+                    .font(.footnote)
                 Button("Add") {
                     guard !customName.isEmpty else { return }
                     labels.append(JobLabel(name: customName, colorHex: customColor.hexString))
@@ -298,12 +298,12 @@ struct DescriptionTab: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text("Paste the full job description here before it gets taken down!")
-                    .font(.caption).foregroundColor(.secondary)
+                    .font(.footnote).foregroundColor(.secondary)
                 Spacer()
 
                 if store.job.hasPDF {
                     Button { store.send(.viewPDFTapped) } label: {
-                        Label("View PDF", systemImage: "doc.fill").font(.caption)
+                        Label("View PDF", systemImage: "doc.fill").font(.footnote)
                     }
                     .buttonStyle(.bordered).controlSize(.mini)
                 }
@@ -313,35 +313,35 @@ struct DescriptionTab: View {
                         if store.isGeneratingPDF {
                             HStack(spacing: 4) {
                                 ProgressView().controlSize(.mini)
-                                Text("Saving…").font(.caption)
+                                Text("Saving…").font(.footnote)
                             }
                         } else {
-                            Label("Save PDF", systemImage: "square.and.arrow.down").font(.caption)
+                            Label("Save PDF", systemImage: "square.and.arrow.down").font(.footnote)
                         }
                     }
                     .buttonStyle(.bordered).controlSize(.mini).disabled(store.isGeneratingPDF)
 
                     Button { store.send(.printTapped) } label: {
-                        Label("Print", systemImage: "printer").font(.caption)
+                        Label("Print", systemImage: "printer").font(.footnote)
                     }
                     .buttonStyle(.bordered).controlSize(.mini)
 
                     Button { store.send(.copyDescriptionTapped) } label: {
                         Label(store.showCopied ? "Copied!" : "Copy",
                               systemImage: store.showCopied ? "checkmark" : "doc.on.doc")
-                            .font(.caption)
+                            .font(.footnote)
                     }
                     .buttonStyle(.bordered).controlSize(.mini)
 
                     Text("\(store.jobDescription.wordCount) words")
-                        .font(.caption2).foregroundColor(.secondary)
+                        .font(.footnote).foregroundColor(.secondary)
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
             .background(Color(NSColor.controlBackgroundColor))
 
             if let err = store.pdfError {
-                Text(err).font(.caption).foregroundColor(.red)
+                Text(err).font(.footnote).foregroundColor(.red)
                     .padding(.horizontal, 16).padding(.vertical, 4)
                     .background(Color.red.opacity(0.1))
             }
@@ -359,23 +359,256 @@ struct DescriptionTab: View {
 
 struct NotesTab: View {
     @Bindable var store: StoreOf<JobDetailFeature>
+    @State private var selectedNoteID: UUID?
+
+    static let cardColors: [Color] = [
+        Color(red: 1.0, green: 0.87, blue: 0.8),   // peach
+        Color(red: 0.8, green: 0.92, blue: 1.0),   // sky blue
+        Color(red: 0.85, green: 1.0, blue: 0.88),  // mint
+        Color(red: 0.95, green: 0.85, blue: 1.0),  // lavender
+        Color(red: 1.0, green: 0.95, blue: 0.78),  // butter
+        Color(red: 1.0, green: 0.82, blue: 0.88),  // rose
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        if let noteID = selectedNoteID,
+           store.noteCards.contains(where: { $0.id == noteID }) {
+            NoteEditorView(
+                note: Binding(
+                    get: { store.noteCards.first(where: { $0.id == noteID }) ?? Note() },
+                    set: { new in
+                        var updated = new
+                        updated.updatedAt = Date()
+                        var copy = store.noteCards
+                        if let idx = copy.firstIndex(where: { $0.id == updated.id }) {
+                            copy[idx] = updated
+                            store.send(.binding(.set(\.noteCards, copy)))
+                        }
+                    }
+                ),
+                onBack: { selectedNoteID = nil },
+                onDelete: {
+                    store.send(.deleteNote(noteID))
+                    selectedNoteID = nil
+                }
+            )
+        } else {
+            NoteCardGridView(
+                store: store,
+                cardColors: NotesTab.cardColors,
+                onSelectNote: { selectedNoteID = $0 }
+            )
+        }
+    }
+}
+
+// MARK: - Note Card Grid
+
+struct NoteCardGridView: View {
+    @Bindable var store: StoreOf<JobDetailFeature>
+    let cardColors: [Color]
+    let onSelectNote: (UUID) -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
             HStack {
-                Text("Notes, research, salary info, recruiter details, anything relevant")
-                    .font(.caption).foregroundColor(.secondary)
+                Text("Notes about this application")
+                    .font(.footnote).foregroundColor(.secondary)
                 Spacer()
-                Text("\(store.notes.isEmpty ? 0 : store.notes.components(separatedBy: .newlines).count) lines")
-                    .font(.caption2).foregroundColor(.secondary)
+                Button { store.send(.addNote) } label: {
+                    Label("New Note", systemImage: "plus").font(.footnote)
+                }
+                .buttonStyle(.bordered).controlSize(.mini)
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
             .background(Color(NSColor.controlBackgroundColor))
 
             Divider()
 
-            TextEditor(text: $store.notes).font(.body).padding(12)
+            if store.noteCards.isEmpty {
+                ContentUnavailableView(
+                    "No Notes Yet",
+                    systemImage: "note.text",
+                    description: Text("Add your first note to capture research, salary info, or anything relevant")
+                )
+                .padding()
+            } else {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 180))], spacing: 12) {
+                        ForEach(store.noteCards) { note in
+                            NoteCard(
+                                note: note,
+                                accentColor: cardColors[abs(note.id.hashValue) % cardColors.count],
+                                onTap: { onSelectNote(note.id) }
+                            )
+                        }
+                    }
+                    .padding(16)
+                }
+            }
         }
+    }
+}
+
+// MARK: - Note Card
+
+struct NoteCard: View {
+    let note: Note
+    let accentColor: Color
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Accent bar
+                Rectangle()
+                    .fill(accentColor)
+                    .frame(height: 6)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(note.title.isEmpty ? "Untitled" : note.title)
+                        .font(.subheadline).fontWeight(.semibold)
+                        .lineLimit(1)
+
+                    if !note.subtitle.isEmpty {
+                        Text(note.subtitle)
+                            .font(.footnote).foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    if !note.body.isEmpty {
+                        Text(note.body)
+                            .font(.footnote).foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    if !note.tags.isEmpty {
+                        FlowLayout(spacing: 4) {
+                            ForEach(note.tags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.system(size: 12))
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background(accentColor.opacity(0.5))
+                                    .clipShape(Capsule())
+                            }
+                        }
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .background(Color(NSColor.controlBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+            .contentShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
+    }
+}
+
+// MARK: - Note Editor
+
+struct NoteEditorView: View {
+    @Binding var note: Note
+    let onBack: () -> Void
+    let onDelete: () -> Void
+
+    @State private var tagInput: String = ""
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Nav bar
+            HStack {
+                Button(action: onBack) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Notes")
+                    }
+                    .font(.subheadline)
+                }
+                .buttonStyle(.plain).foregroundColor(.accentColor)
+
+                Spacer()
+
+                Button(role: .destructive, action: onDelete) {
+                    Label("Delete", systemImage: "trash").font(.footnote)
+                }
+                .buttonStyle(.bordered).controlSize(.mini)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .background(Color(NSColor.controlBackgroundColor))
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    // Title
+                    TextField("Title", text: $note.title)
+                        .font(.title3).fontWeight(.semibold)
+                        .textFieldStyle(.plain)
+
+                    // Subtitle
+                    TextField("Subtitle", text: $note.subtitle)
+                        .font(.subheadline).foregroundColor(.secondary)
+                        .textFieldStyle(.plain)
+
+                    Divider()
+
+                    // Tags
+                    VStack(alignment: .leading, spacing: 6) {
+                        if !note.tags.isEmpty {
+                            FlowLayout(spacing: 6) {
+                                ForEach(note.tags, id: \.self) { tag in
+                                    HStack(spacing: 3) {
+                                        Text(tag).font(.footnote)
+                                        Button {
+                                            note.tags.removeAll { $0 == tag }
+                                        } label: {
+                                            Image(systemName: "xmark").font(.system(size: 8))
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(.horizontal, 7).padding(.vertical, 3)
+                                    .background(Color.accentColor.opacity(0.1))
+                                    .foregroundColor(.accentColor)
+                                    .clipShape(Capsule())
+                                }
+                            }
+                        }
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "tag").font(.footnote).foregroundColor(.secondary)
+                            TextField("Add tag…", text: $tagInput)
+                                .font(.footnote).textFieldStyle(.plain)
+                                .onSubmit { addTag() }
+                            Button("Add") { addTag() }
+                                .buttonStyle(.bordered).controlSize(.mini)
+                                .disabled(tagInput.trimmingCharacters(in: .whitespaces).isEmpty)
+                        }
+                    }
+
+                    Divider()
+
+                    // Body
+                    TextEditor(text: $note.body)
+                        .font(.body)
+                        .frame(minHeight: 200)
+                        .scrollContentBackground(.hidden)
+                }
+                .padding(16)
+            }
+        }
+    }
+
+    private func addTag() {
+        let trimmed = tagInput.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, !note.tags.contains(trimmed) else { return }
+        note.tags.append(trimmed)
+        tagInput = ""
     }
 }
 
@@ -388,10 +621,10 @@ struct ContactsTab: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Recruiters, hiring managers, connections")
-                    .font(.caption).foregroundColor(.secondary)
+                    .font(.footnote).foregroundColor(.secondary)
                 Spacer()
                 Button { store.send(.addContact) } label: {
-                    Label("Add Contact", systemImage: "person.badge.plus").font(.caption)
+                    Label("Add Contact", systemImage: "person.badge.plus").font(.footnote)
                 }
                 .buttonStyle(.bordered).controlSize(.mini)
             }
@@ -444,14 +677,14 @@ struct ContactRow: View {
                     TextField("Name", text: $contact.name)
                         .font(.subheadline).fontWeight(.medium).textFieldStyle(.plain)
                     TextField("Title / Role", text: $contact.title)
-                        .font(.caption).foregroundColor(.secondary).textFieldStyle(.plain)
+                        .font(.footnote).foregroundColor(.secondary).textFieldStyle(.plain)
                 }
                 Spacer()
                 Toggle("Connected", isOn: $contact.connected)
                     .toggleStyle(.checkbox).labelsHidden().help("LinkedIn connected")
                 Button { isExpanded.toggle() } label: {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.caption).foregroundColor(.secondary)
+                        .font(.footnote).foregroundColor(.secondary)
                 }
                 .buttonStyle(.plain)
             }
@@ -469,7 +702,7 @@ struct ContactRow: View {
                         .frame(height: 60)
                         .overlay(RoundedRectangle(cornerRadius: 4).stroke(Color.secondary.opacity(0.2)))
                 }
-                .font(.caption).padding(.leading, 28)
+                .font(.footnote).padding(.leading, 28)
             }
         }
         .padding(.vertical, 4)
@@ -484,10 +717,10 @@ struct InterviewsTab: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Track each interview round").font(.caption).foregroundColor(.secondary)
+                Text("Track each interview round").font(.footnote).foregroundColor(.secondary)
                 Spacer()
                 Button { store.send(.addInterview) } label: {
-                    Label("Add Round", systemImage: "plus").font(.caption)
+                    Label("Add Round", systemImage: "plus").font(.footnote)
                 }
                 .buttonStyle(.bordered).controlSize(.mini)
             }
@@ -543,15 +776,15 @@ struct InterviewRoundRow: View {
             }
             HStack(spacing: 8) {
                 TextField("Type (Technical, Behavioral...)", text: $round.type)
-                    .textFieldStyle(.roundedBorder).font(.caption)
+                    .textFieldStyle(.roundedBorder).font(.footnote)
                 DatePicker("", selection: Binding(
                     get: { round.date ?? Date() },
                     set: { round.date = $0 }
                 ), displayedComponents: [.date, .hourAndMinute])
-                .labelsHidden().font(.caption).frame(width: 160)
+                .labelsHidden().font(.footnote).frame(width: 160)
             }
-            TextField("Interviewers", text: $round.interviewers).textFieldStyle(.roundedBorder).font(.caption)
-            TextField("Notes / Feedback", text: $round.notes).textFieldStyle(.roundedBorder).font(.caption)
+            TextField("Interviewers", text: $round.interviewers).textFieldStyle(.roundedBorder).font(.footnote)
+            TextField("Notes / Feedback", text: $round.notes).textFieldStyle(.roundedBorder).font(.footnote)
         }
         .padding(.vertical, 4)
     }
@@ -580,7 +813,7 @@ struct AIAssistantTab: View {
             if store.apiKey.isEmpty {
                 HStack {
                     Image(systemName: "key.fill").foregroundColor(.orange)
-                    Text("Add your Claude API key in Settings to use AI features.").font(.callout)
+                    Text("Add your Claude API key in Settings to use AI features.").font(.subheadline)
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -595,7 +828,7 @@ struct AIAssistantTab: View {
                             VStack(spacing: 8) {
                                 Text("✦").font(.system(size: 28))
                                 Text("Ask Claude anything about this application,\nor choose a quick action above.")
-                                    .font(.callout).foregroundColor(.secondary)
+                                    .font(.subheadline).foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                             }
                             .frame(maxWidth: .infinity)
@@ -630,7 +863,7 @@ struct AIAssistantTab: View {
             // Input bar
             VStack(spacing: 6) {
                 if let error = store.aiError {
-                    Text(error).font(.caption).foregroundColor(.red)
+                    Text(error).font(.footnote).foregroundColor(.red)
                         .padding(8).background(Color.red.opacity(0.1)).cornerRadius(6)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -678,7 +911,7 @@ struct AIAssistantTab: View {
                 .onAppear { inputFocused = true }
                 HStack {
                     Button("Clear conversation") { store.send(.clearChat) }
-                        .buttonStyle(.plain).font(.caption).foregroundColor(.secondary)
+                        .buttonStyle(.plain).font(.footnote).foregroundColor(.secondary)
                         .disabled(store.chatMessages.isEmpty)
                     Spacer()
                 }
@@ -743,7 +976,7 @@ struct ChatBubble: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(message.content, forType: .string)
                 } label: {
-                    Label("Copy", systemImage: "doc.on.doc").font(.caption2)
+                    Label("Copy", systemImage: "doc.on.doc").font(.footnote)
                 }
                 .buttonStyle(.plain).foregroundColor(.secondary)
             }

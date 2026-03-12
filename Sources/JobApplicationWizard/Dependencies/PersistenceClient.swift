@@ -18,10 +18,10 @@ struct PersistenceClient {
 
 // MARK: - CSV columns (complete dump)
 // ID, Company, Title, URL, Status, DateAdded, DateApplied, Salary, Location,
-// Excitement, IsFavorite, Labels, JobDescription, Notes, ResumeUsed, CoverLetter,
+// Excitement, IsFavorite, Labels, JobDescription, NoteCards, ResumeUsed, CoverLetter,
 // Contacts, Interviews, HasPDF, PDFPath
 
-private let csvHeader = "ID,Company,Title,URL,Status,DateAdded,DateApplied,Salary,Location,Excitement,IsFavorite,Labels,JobDescription,Notes,ResumeUsed,CoverLetter,Contacts,Interviews,HasPDF,PDFPath"
+private let csvHeader = "ID,Company,Title,URL,Status,DateAdded,DateApplied,Salary,Location,Excitement,IsFavorite,Labels,JobDescription,NoteCards,ResumeUsed,CoverLetter,Contacts,Interviews,HasPDF,PDFPath"
 
 private let iso = ISO8601DateFormatter()
 
@@ -31,6 +31,7 @@ private func csvQuote(_ s: String) -> String {
 
 private func jobToCSVRow(_ job: JobApplication) -> String {
     let labelsJSON = (try? String(data: JSONEncoder().encode(job.labels.map { $0.name }), encoding: .utf8)) ?? "[]"
+    let noteCardsJSON = (try? String(data: JSONEncoder().encode(job.noteCards), encoding: .utf8)) ?? "[]"
     let contactsJSON = (try? String(data: JSONEncoder().encode(job.contacts), encoding: .utf8)) ?? "[]"
     let interviewsJSON = (try? String(data: JSONEncoder().encode(job.interviews), encoding: .utf8)) ?? "[]"
 
@@ -48,7 +49,7 @@ private func jobToCSVRow(_ job: JobApplication) -> String {
         job.isFavorite ? "true" : "false",
         labelsJSON,
         job.jobDescription,
-        job.notes,
+        noteCardsJSON,
         job.resumeUsed,
         job.coverLetter,
         contactsJSON,
@@ -134,7 +135,6 @@ private func rowToJob(_ row: [String], headers: [String]) -> JobApplication? {
     job.excitement = Int(col("Excitement")) ?? 3
     job.isFavorite = col("IsFavorite") == "true"
     job.jobDescription = col("JobDescription")
-    job.notes = col("Notes")
     job.resumeUsed = col("ResumeUsed")
     job.coverLetter = col("CoverLetter")
     job.hasPDF = col("HasPDF") == "true"
@@ -160,6 +160,12 @@ private func rowToJob(_ row: [String], headers: [String]) -> JobApplication? {
     if let data = col("Interviews").data(using: .utf8),
        let interviews = try? JSONDecoder().decode([InterviewRound].self, from: data) {
         job.interviews = interviews
+    }
+
+    // NoteCards — JSON encoded
+    if let data = col("NoteCards").data(using: .utf8),
+       let noteCards = try? JSONDecoder().decode([Note].self, from: data) {
+        job.noteCards = noteCards
     }
 
     guard !job.company.isEmpty || !job.title.isEmpty else { return nil }
