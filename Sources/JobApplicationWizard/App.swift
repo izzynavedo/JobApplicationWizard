@@ -14,6 +14,11 @@ struct JobApplicationWizardApp: App {
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified(showsTitle: true))
         .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    store.send(.checkForUpdates)
+                }
+            }
             CommandGroup(replacing: .help) {
                 Link("Claude API Documentation",
                      destination: URL(string: "https://docs.anthropic.com")!)
