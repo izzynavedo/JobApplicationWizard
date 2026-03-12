@@ -4,13 +4,13 @@
         <title>Job Application Wizard</title>
         <item>
             <title>Version 2.2</title>
-            <pubDate>Thu, 12 Mar 2026 16:53:08 +0000</pubDate>
+            <pubDate>Thu, 12 Mar 2026 16:57:38 +0000</pubDate>
             <sparkle:version>2.2</sparkle:version>
             <sparkle:shortVersionString>2.2</sparkle:shortVersionString>
             <enclosure
                 url="https://github.com/zacspa/JobApplicationWizard/releases/download/v2.2/JobApplicationWizard.dmg"
                 sparkle:edSignature=""
-                length="4335825"
+                length="4335842"
                 type="application/octet-stream"/>
         </item>
     </channel>

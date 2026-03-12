@@ -29,9 +29,12 @@ cp -r "$BUILD_DIR/Sparkle.framework" "$APP_BUNDLE/Contents/Frameworks/Sparkle.fr
 
 # SPM links the binary against @rpath/Sparkle.framework/Versions/B/Sparkle,
 # but we embed a flat (non-versioned) framework, so retarget the reference.
+# Also add the Frameworks rpath — SPM only adds @loader_path which resolves
+# to Contents/MacOS/, not Contents/Frameworks/ where the framework lives.
 install_name_tool \
     -change "@rpath/Sparkle.framework/Versions/B/Sparkle" \
             "@rpath/Sparkle.framework/Sparkle" \
+    -add_rpath "@loader_path/../Frameworks" \
     "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
 cat > "$APP_BUNDLE/Contents/Info.plist" << INFOPLIST
