@@ -9,6 +9,11 @@ APP_BUNDLE="$APP_NAME.app"
 DMG_FINAL="$APP_NAME.dmg"
 DMG_RW="${APP_NAME}-rw.dmg"
 VOL_NAME="Job Application Wizard"
+# Set these in your environment or a local .env file (never commit them):
+#   export SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+#   export NOTARIZE_PROFILE="JobApplicationWizard"
+SIGN_IDENTITY="${SIGN_IDENTITY:?Need to set SIGN_IDENTITY}"
+NOTARIZE_PROFILE="${NOTARIZE_PROFILE:-JobApplicationWizard}"
 
 # ── 1. Build ──────────────────────────────────────────────────────────────────
 echo "▶ Building release binary..."
@@ -42,8 +47,8 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << INFOPLIST
 </plist>
 INFOPLIST
 
-echo "▶ Signing app bundle (ad-hoc)..."
-codesign --force --deep --sign - "$APP_BUNDLE"
+echo "▶ Signing app bundle..."
+codesign --force --deep --options runtime --sign "$SIGN_IDENTITY" "$APP_BUNDLE"
 
 # ── 3. Generate DMG background image (pure Python stdlib, no deps) ─────────────
 echo "▶ Generating background image..."
@@ -166,5 +171,14 @@ hdiutil convert "$DMG_RW" \
 
 rm -f "$DMG_RW"
 
+# ── 8. Notarize and staple ────────────────────────────────────────────────────
+echo "▶ Submitting to Apple notarization (this takes a minute)..."
+xcrun notarytool submit "$DMG_FINAL" \
+    --keychain-profile "$NOTARIZE_PROFILE" \
+    --wait
+
+echo "▶ Stapling notarization ticket..."
+xcrun stapler staple "$DMG_FINAL"
+
 echo ""
-echo "✓  $DMG_FINAL  ($(du -sh "$DMG_FINAL" | awk '{print $1}'))"
+echo "✓  $DMG_FINAL  ($(du -sh "$DMG_FINAL" | awk '{print $1}')) — notarized & stapled"

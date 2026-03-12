@@ -8,3 +8,4 @@ xcuserdata/
 *.xcworkspace/xcuserdata
 JobApplicationWizard.app
 JobApplicationWizard.dmg
+.env.local
