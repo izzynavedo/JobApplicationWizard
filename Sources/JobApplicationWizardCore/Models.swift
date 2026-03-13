@@ -341,11 +341,11 @@ extension Color {
     }
 
     public var hexString: String {
-        let components = NSColor(self).usingColorSpace(.sRGB)
-        let r = Int((components?.redComponent ?? 0) * 255)
-        let g = Int((components?.greenComponent ?? 0) * 255)
-        let b = Int((components?.blueComponent ?? 0) * 255)
-        return String(format: "#%02X%02X%02X", r, g, b)
+        let resolved = resolve(in: EnvironmentValues())
+        return String(format: "#%02X%02X%02X",
+            Int(resolved.red * 255),
+            Int(resolved.green * 255),
+            Int(resolved.blue * 255))
     }
 }
 
