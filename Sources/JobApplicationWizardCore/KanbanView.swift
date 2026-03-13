@@ -35,7 +35,7 @@ public struct KanbanView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.windowBackground)
     }
 }
 
@@ -119,7 +119,7 @@ struct KanbanRow: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(isTargeted
                       ? status.color.opacity(0.08)
-                      : Color(NSColor.controlBackgroundColor))
+                      : Color.controlBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
                         .strokeBorder(isTargeted ? status.color : Color.clear, lineWidth: 2)
@@ -227,7 +227,7 @@ struct JobCard: View {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected
                           ? job.status.color.opacity(0.12)
-                          : Color(NSColor.textBackgroundColor))
+                          : Color.textBackground)
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .strokeBorder(

@@ -31,7 +31,7 @@ public struct ProfileView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 14)
-            .background(Color(NSColor.windowBackgroundColor))
+            .background(Color.windowBackground)
 
             Divider()
 

@@ -49,7 +49,7 @@ public struct ListView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             Divider()
 

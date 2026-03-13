@@ -30,7 +30,7 @@ public struct SidebarView: View {
                 .padding(.horizontal, 8)
                 .padding(.bottom, 8)
             }
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             Divider()
 
@@ -77,7 +77,7 @@ public struct SidebarView: View {
                         .foregroundColor(.secondary)
                 }
                 .padding(12)
-                .background(Color(NSColor.controlBackgroundColor))
+                .background(Color.controlBackground)
                 .cornerRadius(8)
             }
             .buttonStyle(.plain)
@@ -118,7 +118,7 @@ public struct SidebarView: View {
                 .help("Export to CSV")
             }
             .padding(12)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
         }
     }
 }
