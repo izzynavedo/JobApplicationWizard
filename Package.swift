@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "JobApplicationWizard",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
     dependencies: [
         .package(
             url: "https://github.com/pointfreeco/swift-composable-architecture",
@@ -19,7 +19,7 @@ let package = Package(
             name: "JobApplicationWizardCore",
             dependencies: [
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
-                .product(name: "Sparkle", package: "Sparkle")
+                .product(name: "Sparkle", package: "Sparkle", condition: .when(platforms: [.macOS]))
             ],
             path: "Sources/JobApplicationWizardCore",
             resources: [.process("Resources")]
@@ -28,7 +28,7 @@ let package = Package(
             name: "JobApplicationWizard",
             dependencies: [
                 "JobApplicationWizardCore",
-                .product(name: "Sparkle", package: "Sparkle")
+                .product(name: "Sparkle", package: "Sparkle", condition: .when(platforms: [.macOS]))
             ],
             path: "Sources/JobApplicationWizard"
         ),
