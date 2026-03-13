@@ -77,7 +77,7 @@ public struct ContentView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
             .cornerRadius(8)
 
             Spacer()
@@ -94,7 +94,7 @@ public struct ContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.windowBackground)
     }
 }
 
@@ -121,7 +121,7 @@ struct StatusFilterBar: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
         }
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.windowBackground)
     }
 }
 
@@ -146,7 +146,7 @@ struct FilterPill: View {
             .fontWeight(selected ? .semibold : .regular)
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
-            .background(selected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+            .background(selected ? Color.accentColor : Color.controlBackground)
             .foregroundColor(selected ? .white : .primary)
             .clipShape(Capsule())
             .overlay(

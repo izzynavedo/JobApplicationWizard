@@ -156,7 +156,7 @@ private struct DataSettingsTab: View {
                             .foregroundColor(.primary)
                             .textSelection(.enabled)
                             .padding(8)
-                            .background(Color(NSColor.textBackgroundColor))
+                            .background(Color.textBackground)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                     }
 

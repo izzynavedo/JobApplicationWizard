@@ -131,7 +131,7 @@ public struct JobDetailView: View {
             }
         }
         .padding(16)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color.controlBackground)
     }
 }
 
@@ -360,7 +360,7 @@ struct DescriptionTab: View {
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             if let err = store.pdfError {
                 Text(err).font(.footnote).foregroundColor(.red)
@@ -443,7 +443,7 @@ struct NoteCardGridView: View {
                 .buttonStyle(.bordered).controlSize(.mini)
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             Divider()
 
@@ -520,7 +520,7 @@ struct NoteCard: View {
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .contentShape(RoundedRectangle(cornerRadius: 10))
         }
@@ -563,7 +563,7 @@ struct NoteEditorView: View {
                 .buttonStyle(.bordered).controlSize(.mini)
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             Divider()
 
@@ -652,7 +652,7 @@ struct ContactsTab: View {
                 .buttonStyle(.bordered).controlSize(.mini)
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             Divider()
 
@@ -749,7 +749,7 @@ struct InterviewsTab: View {
                 .buttonStyle(.bordered).controlSize(.mini)
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             Divider()
 
@@ -852,7 +852,7 @@ struct AIAssistantTab: View {
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
 
             Divider()
 
@@ -943,7 +943,7 @@ struct AIAssistantTab: View {
                             }
                     }
                     .padding(.horizontal, 4).padding(.vertical, 2)
-                    .background(Color(NSColor.textBackgroundColor))
+                    .background(Color.textBackground)
                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.secondary.opacity(0.3)))
                     Button {
                         store.send(.sendMessage)
@@ -964,7 +964,7 @@ struct AIAssistantTab: View {
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 10)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
         }
     }
 
@@ -1011,7 +1011,7 @@ struct ChatBubble: View {
                 .background(
                     message.role == .user
                         ? Color.accentColor.opacity(0.15)
-                        : Color(NSColor.controlBackgroundColor)
+                        : Color.controlBackground
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
@@ -1047,7 +1047,7 @@ struct ThinkingBubble: View {
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(Color.controlBackground)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
                 RoundedRectangle(cornerRadius: 12)

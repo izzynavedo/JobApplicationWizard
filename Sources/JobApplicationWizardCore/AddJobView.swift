@@ -28,7 +28,7 @@ public struct AddJobView: View {
                     .disabled(!store.canSave)
             }
             .padding(16)
-            .background(Color(NSColor.windowBackgroundColor))
+            .background(Color.windowBackground)
 
             Divider()
 
