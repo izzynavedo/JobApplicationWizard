@@ -443,6 +443,16 @@ private struct AboutSettingsTab: View {
                     .font(DS.Typography.caption)
                     .foregroundColor(DS.Color.textSecondary)
                     .padding(.top, DS.Spacing.xxs)
+                HStack(spacing: DS.Spacing.md) {
+                    Link("Privacy Policy",
+                         destination: URL(string: "https://zacspa.github.io/JobApplicationWizard/privacy.html")!)
+                    Text("·")
+                        .foregroundColor(DS.Color.textSecondary)
+                    Link("Terms of Service",
+                         destination: URL(string: "https://zacspa.github.io/JobApplicationWizard/terms.html")!)
+                }
+                .font(DS.Typography.caption)
+                .padding(.top, DS.Spacing.sm)
             }
             Spacer()
         }
