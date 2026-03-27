@@ -185,10 +185,12 @@ public struct AppFeature {
                         await send(.jobsLoaded(await jobs))
                         await send(.settingsLoaded(await settings))
                         await send(.saveSettingsKey(apiKey))
-                        // Auto-sync on launch if authenticated
-                        let authenticated = await syncStorage.isAuthenticated()
-                        if authenticated {
-                            await send(.syncAuthSucceeded)
+                        // Auto-sync on launch if authenticated and configured
+                        if GoogleDriveSecrets.isConfigured {
+                            let authenticated = await syncStorage.isAuthenticated()
+                            if authenticated {
+                                await send(.syncAuthSucceeded)
+                            }
                         }
                     },
                     .send(.calendar(.startListening))

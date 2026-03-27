@@ -394,11 +394,18 @@ private struct DataSettingsTab: View {
                         store.send(.syncSignOut)
                     }
                     .foregroundColor(.red)
-                } else {
+                } else if GoogleDriveSecrets.isConfigured {
                     Button("Sign in with Google") {
                         store.send(.syncSignIn)
                     }
                     Text("Sync your jobs across Mac and iOS via Google Drive.")
+                        .font(DS.Typography.caption)
+                        .foregroundColor(DS.Color.textSecondary)
+                } else {
+                    Text("Google Drive sync requires OAuth credentials.")
+                        .font(DS.Typography.caption)
+                        .foregroundColor(DS.Color.textSecondary)
+                    Text("See Sources/JobApplicationShared/Secrets.swift to configure.")
                         .font(DS.Typography.caption)
                         .foregroundColor(DS.Color.textSecondary)
                 }

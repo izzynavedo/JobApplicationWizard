@@ -186,6 +186,7 @@ struct iOSAppFeature {
             // MARK: - Sync Actions
 
             case .syncCheckAuth:
+                guard GoogleDriveSecrets.isConfigured else { return .none }
                 return .run { [syncStorage] send in
                     let authenticated = await syncStorage.isAuthenticated()
                     syncLog.info("Auth check on launch: \(authenticated)")

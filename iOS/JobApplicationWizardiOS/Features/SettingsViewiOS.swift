@@ -111,12 +111,16 @@ struct SettingsViewiOS: View {
                 } label: {
                     Label("Disconnect", systemImage: "xmark.circle")
                 }
-            } else {
+            } else if GoogleDriveSecrets.isConfigured {
                 Button {
                     store.send(.syncSignIn)
                 } label: {
                     Label("Sign in with Google", systemImage: "globe")
                 }
+            } else {
+                Text("Sync requires OAuth credentials. See Secrets.swift.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             if let error = store.syncError {
