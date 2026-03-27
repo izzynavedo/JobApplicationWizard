@@ -51,7 +51,7 @@ final class KanbanBadgeTests: XCTestCase {
         let round = InterviewRound(round: 1, date: now.addingTimeInterval(-2 * 3600), completed: false)
         let info = interviewCountdownInfo(rounds: [round], now: now)
         XCTAssertEqual(info?.text, "Interview was 2h ago")
-        XCTAssertEqual(info?.color, Color.gray)
+        XCTAssertEqual(info?.color, DS.Color.textSecondary)
         XCTAssertEqual(info?.isItalic, true)
     }
 
