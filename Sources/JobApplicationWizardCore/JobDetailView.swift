@@ -235,7 +235,7 @@ struct OverviewTab: View {
                             Divider()
                             timelineRow(
                                 icon: interview.completed ? "checkmark.circle.fill" : "person.line.dotted.person",
-                                iconColor: interview.completed ? .green : .secondary,
+                                iconColor: interview.completed ? DS.Color.success : .secondary,
                                 label: interview.type.isEmpty
                                     ? "Round \(interview.round)"
                                     : "Round \(interview.round) · \(interview.type)",
@@ -259,7 +259,7 @@ struct OverviewTab: View {
                 }
 
                 GroupBox("Labels") {
-                    LabelsEditor(labels: $store.labels).padding(4)
+                    LabelsEditor(labels: $store.labels).padding(DS.Spacing.xxs)
                 }
             }
             .padding(DS.Spacing.lg)
@@ -297,7 +297,7 @@ struct TaskRowView: View {
         HStack {
             Button(action: onToggle) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(task.isCompleted ? .green : .secondary)
+                    .foregroundColor(task.isCompleted ? DS.Color.success : DS.Color.textSecondary)
             }
             .buttonStyle(.plain)
             Text(task.title)
@@ -355,7 +355,7 @@ struct LabelsEditor: View {
                         Button {
                             labels.removeAll { $0.id == label.id }
                         } label: {
-                            Image(systemName: "xmark").font(.system(size: 8))
+                            Image(systemName: "xmark").font(DS.Typography.micro)
                         }
                         .buttonStyle(.plain)
                     }
@@ -795,55 +795,63 @@ struct NoteEditorView: View {
             .padding(.horizontal, DS.Spacing.lg)
             .padding(.vertical, DS.Spacing.sm)
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
-                    // Title as inline heading
-                    DSTextField("Untitled", text: $note.title, font: .systemFont(ofSize: 20, weight: .bold))
-                        .frame(minHeight: 28)
+            VStack(alignment: .leading, spacing: DS.Spacing.sm) {
+                // Title as inline heading
+                DSTextField("Untitled", text: $note.title, font: .systemFont(ofSize: 20, weight: .bold))
+                    .frame(minHeight: 28)
 
-                    // Subtitle as secondary text
-                    DSTextField("Add a subtitle...", text: $note.subtitle, font: .systemFont(ofSize: 13))
-                        .opacity(note.subtitle.isEmpty ? 0.5 : 1.0)
+                // Subtitle as secondary text
+                DSTextField("Add a subtitle...", text: $note.subtitle, font: .systemFont(ofSize: 13))
+                    .opacity(note.subtitle.isEmpty ? 0.5 : 1.0)
 
-                    // Tags
-                    HStack(spacing: DS.Spacing.xs) {
-                        if !note.tags.isEmpty {
-                            FlowLayout(spacing: DS.Spacing.xs) {
-                                ForEach(note.tags, id: \.self) { tag in
-                                    HStack(spacing: 3) {
-                                        Text(tag).font(DS.Typography.caption)
-                                        Button {
-                                            note.tags.removeAll { $0 == tag }
-                                        } label: {
-                                            Image(systemName: "xmark").font(.system(size: 8))
-                                        }
-                                        .buttonStyle(.plain)
+                // Tags
+                HStack(spacing: DS.Spacing.xs) {
+                    if !note.tags.isEmpty {
+                        FlowLayout(spacing: DS.Spacing.xs) {
+                            ForEach(note.tags, id: \.self) { tag in
+                                HStack(spacing: 3) {
+                                    Text(tag).font(DS.Typography.caption)
+                                    Button {
+                                        note.tags.removeAll { $0 == tag }
+                                    } label: {
+                                        Image(systemName: "xmark").font(DS.Typography.micro)
                                     }
-                                    .padding(.horizontal, DS.Spacing.sm)
-                                    .padding(.vertical, DS.Spacing.xxs)
-                                    .background(accentColor.opacity(0.5))
-                                    .clipShape(Capsule())
+                                    .buttonStyle(.plain)
                                 }
+                                .padding(.horizontal, DS.Spacing.sm)
+                                .padding(.vertical, DS.Spacing.xxs)
+                                .background(accentColor.opacity(0.5))
+                                .clipShape(Capsule())
                             }
                         }
-                        DSTextField("Add tag...", text: $tagInput, font: .systemFont(ofSize: 10), onSubmit: addTag)
-                            .frame(maxWidth: 120)
                     }
+                    DSTextField("Add tag...", text: $tagInput, font: .systemFont(ofSize: 10), onSubmit: addTag)
+                        .frame(maxWidth: 120)
+                }
 
-                    Divider().padding(.vertical, DS.Spacing.xs)
+                Divider().padding(.vertical, DS.Spacing.xs)
 
-                    // Body
+                // Body: DS outlined text editor filling remaining height
+                ZStack(alignment: .topLeading) {
                     TextEditor(text: $note.body)
                         .font(DS.Typography.body)
                         .focusEffectDisabled()
-                        .scrollDisabled(true)
                         .scrollContentBackground(.hidden)
-                        .frame(maxWidth: .infinity, minHeight: 300)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, -5)
+                        .padding(.top, -1)
+
+                    if note.body.isEmpty {
+                        Text("Start writing...")
+                            .font(DS.Typography.body)
+                            .foregroundColor(DS.Color.textSecondary)
+                            .allowsHitTesting(false)
+                    }
                 }
-                .padding(DS.Spacing.lg)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .outlinedField("Note", isEmpty: note.body.isEmpty)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .padding(DS.Spacing.lg)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         }
         .background(DS.Color.controlBackground)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.large))
@@ -936,7 +944,7 @@ struct ContactRow: View {
             HStack {
                 Image(systemName: contact.connected ? "person.fill.checkmark" : "person.circle")
                     .font(DS.Typography.heading2)
-                    .foregroundColor(contact.connected ? .green : DS.Color.textSecondary)
+                    .foregroundColor(contact.connected ? DS.Color.success : DS.Color.textSecondary)
                 VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                     Text(contact.name.isEmpty ? "New Contact" : contact.name)
                         .font(DS.Typography.bodySemibold)
@@ -1064,7 +1072,7 @@ struct InterviewRoundRow: View {
             HStack {
                 Label("Round \(round.round)",
                       systemImage: round.completed ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(round.completed ? .green : .primary)
+                    .foregroundColor(round.completed ? DS.Color.success : .primary)
                     .fontWeight(.semibold).font(DS.Typography.subheadline)
                 Spacer()
                 Toggle("Done", isOn: $round.completed).toggleStyle(.checkbox).labelsHidden()
@@ -1076,7 +1084,7 @@ struct InterviewRoundRow: View {
                 .outlinedField("Interviewers", isEmpty: round.interviewers.isEmpty)
             DSOutlinedTextEditor("Notes", text: $round.notes, minHeight: 36)
             if round.calendarEventIdentifier != nil {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                     Label(round.calendarEventTitle ?? "Linked event", systemImage: "calendar")
                         .font(DS.Typography.footnote)
                     if let date = round.date {
@@ -1192,7 +1200,7 @@ struct DocumentRow: View {
                     HStack(spacing: DS.Spacing.sm) {
                         Text(document.documentType.rawValue.uppercased())
                             .font(DS.Typography.caption2)
-                            .padding(.horizontal, DS.Spacing.xs).padding(.vertical, 1)
+                            .padding(.horizontal, DS.Spacing.xs).padding(.vertical, DS.Spacing.xxxs)
                             .background(Color.accentColor.opacity(DS.Color.Opacity.subtle))
                             .clipShape(Capsule())
                         if let size = document.fileSize {
@@ -1218,7 +1226,7 @@ struct DocumentRow: View {
 
             if isExpanded {
                 Text(document.rawText)
-                    .font(.system(.caption, design: .monospaced))
+                    .font(DS.Typography.captionMono)
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(DS.Spacing.sm)

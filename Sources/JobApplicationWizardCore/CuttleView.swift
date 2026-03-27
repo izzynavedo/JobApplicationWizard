@@ -140,7 +140,7 @@ public struct CuttleView: View {
                 .font(DS.Typography.micro)
                 .foregroundColor(DS.Color.textSecondary)
                 .padding(.horizontal, DS.Spacing.xs)
-                .padding(.vertical, 2)
+                .padding(.vertical, DS.Spacing.xxxs)
                 .background(DS.Glass.surface, in: Capsule())
                 .lineLimit(1)
                 .frame(maxWidth: 120)
@@ -282,7 +282,7 @@ public struct CuttleView: View {
 
     private var resizeHandle: some View {
         Image(systemName: "arrow.up.left.and.arrow.down.right")
-            .font(.system(size: 10, weight: .semibold))
+            .font(DS.Typography.badge)
             .foregroundColor(.secondary.opacity(0.5))
             .frame(width: 20, height: 20)
             .contentShape(Rectangle())
@@ -325,7 +325,7 @@ public struct CuttleView: View {
             Spacer()
 
             if store.acpConnection.aiProvider == .acpAgent, let name = store.acpConnection.connectedAgentName {
-                Circle().fill(Color.green).frame(width: 6, height: 6)
+                Circle().fill(DS.Color.success).frame(width: 6, height: 6)
                 Text(name)
                     .font(DS.Typography.caption2).foregroundColor(DS.Color.textSecondary)
                     .lineLimit(1)
@@ -369,17 +369,17 @@ public struct CuttleView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 300)
 
-            FlowLayout(spacing: 8) {
+            FlowLayout(spacing: DS.Spacing.sm) {
                 ForEach(suggestionChips, id: \.self) { chip in
                     SuggestionChip(chip) {
                         store.send(.applySuggestion(chip))
                     }
                 }
             }
-            .padding(.top, 4)
+            .padding(.top, DS.Spacing.xxs)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 32)
+        .padding(.top, DS.Spacing.xxxl)
     }
 
     private var contextHelpText: String {
@@ -431,13 +431,13 @@ public struct CuttleView: View {
     // MARK: - Context Transition CTA
 
     private var contextTransitionCTA: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: DS.Spacing.pillH) {
             Text("Switch to \(store.alertPendingContext?.displayLabel(jobs: store.jobs) ?? "new context")?")
-                .font(.subheadline).fontWeight(.semibold)
+                .font(DS.Typography.subheadlineSemibold)
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
 
-            HStack(spacing: 12) {
+            HStack(spacing: DS.Spacing.md) {
                 Button("Carry Chat") {
                     store.send(.contextTransitionConfirmed(carry: true))
                 }
@@ -451,15 +451,15 @@ public struct CuttleView: View {
                 .controlSize(.small)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.horizontal, DS.Spacing.xl)
+        .padding(.vertical, DS.Spacing.lg)
         .frame(width: 260)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: DS.Radius.xl)
+                .stroke(DS.Color.borderSubtle, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.15), radius: 8, y: 2)
+        .shadow(color: .black.opacity(DS.Color.Opacity.tint), radius: 8, y: 2)
     }
 
     /// Position the CTA card below the blob, clamped to window bounds.
@@ -488,10 +488,10 @@ public struct CuttleView: View {
     // MARK: - Not Ready View
 
     private var notReadyView: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: DS.Spacing.lg) {
             Spacer()
             Image(systemName: store.acpConnection.aiProvider == .claudeAPI ? "key.fill" : "cpu")
-                .font(.system(size: 32))
+                .font(DS.Typography.displaySmall)
                 .foregroundColor(DS.Color.textSecondary)
 
             if store.acpConnection.aiProvider == .acpAgent {

@@ -57,7 +57,7 @@ public struct CuttleOnboardingOverlay: View {
     @ViewBuilder
     private var dimmingLayer: some View {
         let rects = spotlightFrames(for: store.currentStep)
-        Color.black.opacity(0.4)
+        Color.black.opacity(DS.Color.Opacity.dim)
             .mask {
                 Rectangle()
                     .overlay {
@@ -182,7 +182,7 @@ public struct CuttleOnboardingOverlay: View {
         .frame(width: 480)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+        .shadow(color: .black.opacity(DS.Color.Opacity.strong), radius: 12, y: 4)
         .position(x: windowSize.width / 2, y: windowSize.height / 2)
     }
 
@@ -197,7 +197,7 @@ public struct CuttleOnboardingOverlay: View {
                     Text("v\(agent.version)")
                         .font(DS.Typography.caption2)
                         .padding(.horizontal, DS.Spacing.xxs)
-                        .padding(.vertical, 1)
+                        .padding(.vertical, DS.Spacing.xxxs)
                         .background(Color.secondary.opacity(DS.Color.Opacity.wash))
                         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
                 }
@@ -421,7 +421,7 @@ public struct CuttleOnboardingOverlay: View {
         .frame(width: 480)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+        .shadow(color: .black.opacity(DS.Color.Opacity.strong), radius: 12, y: 4)
         .position(x: windowSize.width / 2, y: windowSize.height / 2)
     }
 
@@ -434,11 +434,11 @@ public struct CuttleOnboardingOverlay: View {
 
         VStack(alignment: .leading, spacing: DS.Spacing.md) {
             Text(step.title)
-                .font(.headline)
+                .font(DS.Typography.heading3)
 
             Text(step.body)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+                .font(DS.Typography.subheadline)
+                .foregroundColor(DS.Color.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             HStack {
@@ -468,15 +468,15 @@ public struct CuttleOnboardingOverlay: View {
                     store.send(.skipAll)
                 }
                 .buttonStyle(.plain)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .font(DS.Typography.caption)
+                .foregroundColor(DS.Color.textSecondary)
             }
         }
         .padding(DS.Spacing.lg)
         .frame(width: 300)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .shadow(color: .black.opacity(0.2), radius: 12, y: 4)
+        .shadow(color: .black.opacity(DS.Color.Opacity.strong), radius: 12, y: 4)
         .position(tooltipPos)
     }
 
@@ -484,7 +484,7 @@ public struct CuttleOnboardingOverlay: View {
 
     @ViewBuilder
     private var stepDots: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: DS.Spacing.xxs) {
             ForEach(Array(store.steps.enumerated()), id: \.offset) { index, _ in
                 Circle()
                     .fill(index == store.currentStepIndex ? Color.accentColor : Color.secondary.opacity(0.3))

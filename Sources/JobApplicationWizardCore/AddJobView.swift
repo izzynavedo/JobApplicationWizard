@@ -44,8 +44,8 @@ public struct AddJobView: View {
                 .frame(maxWidth: 260)
                 Spacer()
             }
-            .padding(.vertical, 8)
-            .background(Color(NSColor.windowBackgroundColor))
+            .padding(.vertical, DS.Spacing.sm)
+            .background(DS.Color.windowBackground)
 
             ScrollView {
                 VStack(spacing: DS.Spacing.md) {
@@ -171,7 +171,7 @@ public struct AddJobView: View {
                         HStack(spacing: DS.Spacing.xxs) {
                             if selected {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 9, weight: .bold))
+                                    .font(DS.Typography.micro)
                             }
                             Text(label.name).font(DS.Typography.caption)
                         }

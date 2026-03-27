@@ -74,8 +74,8 @@ private struct GeneralSettingsTab: View {
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 Text("Walk through Cuttle's features again.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(DS.Typography.caption)
+                    .foregroundColor(DS.Color.textSecondary)
             }
         }
         .formStyle(.grouped)
@@ -233,7 +233,7 @@ private struct AIProviderSettingsTab: View {
                                         .foregroundColor(DS.Color.textSecondary)
                                 } else {
                                     Circle()
-                                        .fill(store.acpConnection.isConnected ? Color.green : Color.gray)
+                                        .fill(store.acpConnection.isConnected ? DS.Color.success : DS.Color.textSecondary)
                                         .frame(width: DS.Spacing.sm, height: DS.Spacing.sm)
                                     if let name = store.acpConnection.connectedAgentName {
                                         Text("Connected: \(name)")
@@ -328,7 +328,7 @@ private struct DataSettingsTab: View {
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         Text(csvHeader)
-                            .font(.system(.caption, design: .monospaced))
+                            .font(DS.Typography.captionMono)
                             .foregroundColor(.primary)
                             .textSelection(.enabled)
                             .padding(DS.Spacing.sm)
@@ -430,7 +430,7 @@ private struct AboutSettingsTab: View {
         VStack(spacing: DS.Spacing.xl) {
             Spacer()
             Image(systemName: "briefcase.fill")
-                .font(.system(size: 56))
+                .font(DS.Typography.displayLarge)
                 .foregroundColor(.accentColor)
             VStack(spacing: DS.Spacing.xs) {
                 Text("Job Application Wizard")

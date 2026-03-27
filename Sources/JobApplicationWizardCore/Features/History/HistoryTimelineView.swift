@@ -46,8 +46,8 @@ public struct HistoryTimelineView: View {
             if store.visibleEvents.isEmpty {
                 VStack(spacing: DS.Spacing.sm) {
                     Image(systemName: "clock")
-                        .font(.largeTitle)
-                        .foregroundColor(.secondary.opacity(0.4))
+                        .font(DS.Typography.displaySmall)
+                        .foregroundColor(.secondary.opacity(DS.Color.Opacity.dim))
                     Text("No history yet")
                         .font(DS.Typography.caption)
                         .foregroundColor(DS.Color.textSecondary)
@@ -103,7 +103,7 @@ private struct HistoryEventRow: View {
         }
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.xs)
-        .background(isRevertTarget ? Color.orange.opacity(DS.Color.Opacity.wash) : Color.clear)
+        .background(isRevertTarget ? DS.Color.warning.opacity(DS.Color.Opacity.wash) : Color.clear)
     }
 
     @ViewBuilder
@@ -120,7 +120,7 @@ private struct HistoryEventRow: View {
         case .import:
             Image(systemName: "square.and.arrow.down")
                 .font(DS.Typography.caption2)
-                .foregroundColor(.green)
+                .foregroundColor(DS.Color.success)
         case .system:
             Image(systemName: "gearshape")
                 .font(DS.Typography.caption2)
@@ -138,19 +138,19 @@ public struct TimeTravelBanner: View {
     public var body: some View {
         HStack {
             Image(systemName: "clock.arrow.circlepath")
-                .foregroundColor(.orange)
+                .foregroundColor(DS.Color.warning)
             Text("Time-travel mode: editing disabled. Select an event to revert to, or cancel.")
                 .font(DS.Typography.caption)
-                .foregroundColor(.orange)
+                .foregroundColor(DS.Color.warning)
             Spacer()
         }
         .padding(.horizontal, DS.Spacing.md)
         .padding(.vertical, DS.Spacing.xs)
-        .background(Color.orange.opacity(DS.Color.Opacity.subtle))
+        .background(DS.Color.warning.opacity(DS.Color.Opacity.subtle))
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(.orange.opacity(0.3)),
+                .foregroundColor(DS.Color.warning.opacity(DS.Color.Opacity.border)),
             alignment: .bottom
         )
     }

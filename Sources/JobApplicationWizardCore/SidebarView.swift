@@ -61,9 +61,9 @@ public struct SidebarView: View {
             Button { store.send(.showProfileTapped) } label: {
                 HStack(spacing: DS.Spacing.md) {
                     Image(systemName: "person.circle.fill")
-                        .font(.system(size: 32))
+                        .font(DS.Typography.displaySmall)
                         .foregroundColor(.accentColor)
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                         Text("My Profile")
                             .fontWeight(.semibold)
                         Text(store.settings.userProfile.name.isEmpty
@@ -131,7 +131,7 @@ struct StatBubble: View {
     let color: Color
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: DS.Spacing.xxxs) {
             Text("\(value)")
                 .font(DS.Typography.heading1)
                 .fontWeight(.bold)

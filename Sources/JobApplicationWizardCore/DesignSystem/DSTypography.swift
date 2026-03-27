@@ -35,5 +35,7 @@ extension DS {
         public static let micro: Font = .system(size: 9, weight: .medium)
         /// Badge/countdown text
         public static let badge: Font = .system(size: 10, weight: .medium)
+        /// Monospaced caption for code snippets
+        public static let captionMono: Font = .system(.caption, design: .monospaced)
     }
 }
