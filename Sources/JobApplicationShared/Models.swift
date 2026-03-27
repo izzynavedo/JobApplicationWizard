@@ -1,5 +1,10 @@
 import Foundation
 import SwiftUI
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 // MARK: - Job Status
 
@@ -240,6 +245,7 @@ public struct JobApplication: Codable, Identifiable, Equatable {
     public var documents: [JobDocument] = []
     public var tasks: [SubTask] = []
     public var atsProvider: ATSProvider?
+    public var updatedAt: Date = Date()
 
     public var displayTitle: String {
         title.isEmpty ? "Untitled Position" : title
@@ -265,7 +271,7 @@ public struct JobApplication: Codable, Identifiable, Equatable {
         case id, company, title, url, status, dateAdded, dateApplied
         case salary, location, jobDescription, noteCards
         case resumeUsed, coverLetter, labels, contacts, interviews
-        case isFavorite, excitement, hasPDF, pdfPath, chatHistory, documents, tasks, atsProvider
+        case isFavorite, excitement, hasPDF, pdfPath, chatHistory, documents, tasks, atsProvider, updatedAt
         case legacyNotes = "notes"
     }
 
@@ -294,6 +300,7 @@ public struct JobApplication: Codable, Identifiable, Equatable {
         documents    = try c.decodeIfPresent([JobDocument].self,  forKey: .documents)    ?? []
         tasks        = try c.decodeIfPresent([SubTask].self,        forKey: .tasks)        ?? []
         atsProvider  = try c.decodeIfPresent(ATSProvider.self,     forKey: .atsProvider)
+        updatedAt    = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? (try c.decodeIfPresent(Date.self, forKey: .dateAdded) ?? Date())
 
         if let cards = try c.decodeIfPresent([Note].self, forKey: .noteCards) {
             noteCards = cards
@@ -334,6 +341,7 @@ public struct JobApplication: Codable, Identifiable, Equatable {
         }
         try c.encode(tasks,          forKey: .tasks)
         try c.encodeIfPresent(atsProvider, forKey: .atsProvider)
+        try c.encode(updatedAt, forKey: .updatedAt)
     }
 }
 
@@ -527,11 +535,17 @@ extension Color {
     }
 
     public var hexString: String {
+        #if os(macOS)
         let components = NSColor(self).usingColorSpace(.sRGB)
         let r = Int((components?.redComponent ?? 0) * 255)
         let g = Int((components?.greenComponent ?? 0) * 255)
         let b = Int((components?.blueComponent ?? 0) * 255)
         return String(format: "#%02X%02X%02X", r, g, b)
+        #else
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
+        UIColor(self).getRed(&r, green: &g, blue: &b, alpha: nil)
+        return String(format: "#%02X%02X%02X", Int(r * 255), Int(g * 255), Int(b * 255))
+        #endif
     }
 }
 

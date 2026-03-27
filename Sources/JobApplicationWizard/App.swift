@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import JobApplicationShared
 #endif
 import SwiftUI
 import ComposableArchitecture
@@ -33,7 +34,11 @@ struct JobApplicationWizardApp: App {
 #if os(macOS)
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 #endif
-    @State var store = Store(initialState: AppFeature.State()) { AppFeature() }
+    @State var store = Store(initialState: AppFeature.State()) {
+        AppFeature()
+    } withDependencies: {
+        $0.syncStorageClient = MacGoogleDriveSync.makeSyncStorageClient()
+    }
     private let updaterController: SPUStandardUpdaterController
 
     init() {

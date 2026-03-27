@@ -1,18 +1,7 @@
 import AppKit
 import ComposableArchitecture
 import Foundation
-
-public enum ViewMode: String, Codable, CaseIterable, Equatable {
-    case kanban = "Kanban"
-    case list = "List"
-
-    public var icon: String {
-        switch self {
-        case .kanban: return "square.grid.3x2"
-        case .list:   return "list.bullet"
-        }
-    }
-}
+import JobApplicationShared
 
 @Reducer
 public struct AppFeature {
@@ -63,6 +52,12 @@ public struct AppFeature {
         // Binding debounce tracking
         public var lastBindingJobId: UUID? = nil
 
+        // Sync
+        public var isSyncEnabled: Bool = false
+        public var isSyncing: Bool = false
+        public var lastSyncDate: Date? = nil
+        public var syncError: String? = nil
+        public var syncRetryCount: Int = 0
         public var filteredJobs: [JobApplication] {
             jobs.filter { job in
                 let matchesSearch = searchQuery.isEmpty ||
@@ -151,6 +146,13 @@ public struct AppFeature {
         // Cuttle onboarding
         case cuttleOnboarding(CuttleOnboardingFeature.Action)
         case replayCuttleTour
+        // Sync
+        case syncSignIn
+        case syncAuthSucceeded
+        case syncSignOut
+        case syncNow
+        case syncCompleted(Result<SyncState, Error>)
+        case syncConflict
     }
 
     @Dependency(\.persistenceClient) var persistence
@@ -159,6 +161,10 @@ public struct AppFeature {
     @Dependency(\.acpRegistryClient) var acpRegistry
     @Dependency(\.historyClient) var historyClient
     @Dependency(\.documentClient) var documentClient
+    @Dependency(\.syncStorageClient) var syncStorage
+    @Dependency(\.baseStateClient) var baseState
+
+    private enum SyncDebounceID { case sync }
 
     public init() {}
 
@@ -172,13 +178,20 @@ public struct AppFeature {
             switch action {
             case .onAppear:
                 return .merge(
-                    .run { send in
+                    .run { [syncStorage] send in
                         async let jobs = Result { try await persistence.loadJobs() }
                         async let settings = Result { try await persistence.loadSettings() }
                         let apiKey = keychain.loadAPIKey()
                         await send(.jobsLoaded(await jobs))
                         await send(.settingsLoaded(await settings))
                         await send(.saveSettingsKey(apiKey))
+                        // Auto-sync on launch if authenticated and configured
+                        if GoogleDriveSecrets.isConfigured {
+                            let authenticated = await syncStorage.isAuthenticated()
+                            if authenticated {
+                                await send(.syncAuthSucceeded)
+                            }
+                        }
                     },
                     .send(.calendar(.startListening))
                 )
@@ -268,6 +281,7 @@ public struct AppFeature {
                 if newStatus == .applied && job.dateApplied == nil {
                     job.dateApplied = Date()
                 }
+                job.updatedAt = Date()
                 state.jobs[id: id] = job
                 if state.jobDetail?.job.id == id {
                     state.jobDetail?.job = job
@@ -278,7 +292,7 @@ public struct AppFeature {
                     source: .user,
                     command: .setStatus(jobId: id, old: oldStatus, new: newStatus)
                 )
-                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state))
+                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state), debouncedSync(state))
 
             case .deleteJob(let id):
                 let snapshot = state.jobs[id: id]
@@ -295,7 +309,7 @@ public struct AppFeature {
                     state.cuttle.error = nil
                     state.cuttle.acpSentSystemPrompt = false
                 }
-                var effects: [Effect<Action>] = [saveJobs(state.jobs)]
+                var effects: [Effect<Action>] = [saveJobs(state.jobs), debouncedSync(state)]
                 if let snapshot {
                     let event = HistoryEvent(
                         label: "Deleted \(snapshot.displayCompany) \(snapshot.displayTitle)",
@@ -310,13 +324,14 @@ public struct AppFeature {
                 guard let job = state.jobs[id: id] else { return .none }
                 let oldVal = job.isFavorite
                 state.jobs[id: id]?.isFavorite.toggle()
+                state.jobs[id: id]?.updatedAt = Date()
                 state.cuttle.jobs = Array(state.jobs)
                 let event = HistoryEvent(
                     label: "\(oldVal ? "Unfavorited" : "Favorited") \(job.displayCompany)",
                     source: .user,
                     command: .toggleFavorite(jobId: id, old: oldVal, new: !oldVal)
                 )
-                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state))
+                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state), debouncedSync(state))
 
             case .prepareAddJob:
                 var addState = AddJobFeature.State()
@@ -355,7 +370,7 @@ public struct AppFeature {
                     source: .user,
                     command: .addJob(jobId: job.id)
                 )
-                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state))
+                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state), debouncedSync(state))
 
             case .addJob(.delegate(.cancel)):
                 state.addJob = AddJobFeature.State()
@@ -366,11 +381,13 @@ public struct AppFeature {
 
             case .jobDetail(.delegate(.jobUpdated(let job))):
                 state.jobs[id: job.id] = job
+                state.jobs[id: job.id]?.updatedAt = Date()
                 state.cuttle.jobs = Array(state.jobs)
                 // Debounce binding edits: record history after 2s of inactivity
                 state.lastBindingJobId = job.id
                 return .merge(
                     saveJobs(state.jobs),
+                    debouncedSync(state),
                     .run { send in
                         try await Task.sleep(for: .seconds(2))
                         await send(.recordBindingEdit(job.id))
@@ -397,7 +414,7 @@ public struct AppFeature {
                     state.cuttle.error = nil
                     state.cuttle.acpSentSystemPrompt = false
                 }
-                var effects: [Effect<Action>] = [saveJobs(state.jobs)]
+                var effects: [Effect<Action>] = [saveJobs(state.jobs), debouncedSync(state)]
                 if let snapshot {
                     let event = HistoryEvent(
                         label: "Deleted \(snapshot.displayCompany) \(snapshot.displayTitle)",
@@ -472,8 +489,46 @@ public struct AppFeature {
             // MARK: - History
 
             case .history(.delegate(.applyCommands(let commands))):
+                var affectedJobIds: Set<UUID> = []
                 for command in commands {
                     applyReversedCommand(command, state: &state)
+                    // Collect affected job IDs from the command
+                    switch command {
+                    case .updateField(let jobId, _, _, _),
+                         .setStatus(let jobId, _, _),
+                         .addNote(let jobId, _),
+                         .deleteNote(let jobId, snapshot: _),
+                         .addContact(let jobId, _),
+                         .deleteContact(let jobId, snapshot: _),
+                         .addInterview(let jobId, _),
+                         .deleteInterview(let jobId, snapshot: _),
+                         .addLabel(let jobId, _),
+                         .removeLabel(let jobId, _),
+                         .setExcitement(let jobId, _, _),
+                         .replaceJob(let jobId, _, _),
+                         .toggleFavorite(let jobId, _, _),
+                         .addDocument(let jobId, _),
+                         .deleteDocument(let jobId, snapshot: _),
+                         .updateInterviewDate(let jobId, _, _, _):
+                        affectedJobIds.insert(jobId)
+                    case .addJob(let jobId):
+                        affectedJobIds.insert(jobId)
+                    case .deleteJob(let jobId, snapshot: _):
+                        affectedJobIds.insert(jobId)
+                    case .compound(let subCommands):
+                        for sub in subCommands {
+                            if case .replaceJob(let jobId, _, _) = sub {
+                                affectedJobIds.insert(jobId)
+                            }
+                        }
+                    }
+                }
+                // Set updatedAt on each affected job
+                let now = Date()
+                for jobId in affectedJobIds {
+                    if state.jobs[id: jobId] != nil {
+                        state.jobs[id: jobId]?.updatedAt = now
+                    }
                 }
                 state.cuttle.jobs = Array(state.jobs)
                 // Refresh job detail if selected
@@ -482,7 +537,7 @@ public struct AppFeature {
                         job: job, apiKey: state.claudeAPIKey, userProfile: state.settings.userProfile
                     )
                 }
-                return saveJobs(state.jobs)
+                return .merge(saveJobs(state.jobs), debouncedSync(state))
 
             case .history:
                 return .none
@@ -623,6 +678,7 @@ public struct AppFeature {
                     }
                 }
 
+                job.updatedAt = Date()
                 state.jobs[id: jobId] = job
                 state.cuttle.jobs = Array(state.jobs)
                 if state.jobDetail?.job.id == jobId {
@@ -636,7 +692,7 @@ public struct AppFeature {
                     source: .agent,
                     command: .replaceJob(jobId: jobId, oldSnapshot: oldSnapshot, newSnapshot: job)
                 )
-                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state))
+                return .merge(saveJobs(state.jobs), recordEvent(event, state: &state), debouncedSync(state))
 
             case .confirmAgentReview:
                 guard let review = state.pendingAgentReview else { return .none }
@@ -1076,11 +1132,146 @@ public struct AppFeature {
                     saveSettings(state.settings),
                     .send(.cuttleOnboarding(.start))
                 )
+
+            // MARK: - Sync
+
+            case .syncSignIn:
+                return .run { [syncStorage] send in
+                    do {
+                        try await syncStorage.authenticate()
+                        await send(.syncAuthSucceeded)
+                    } catch {
+                        await send(.syncCompleted(.failure(error)))
+                    }
+                }
+
+            case .syncAuthSucceeded:
+                state.isSyncEnabled = true
+                return .send(.syncNow)
+
+            case .syncSignOut:
+                syncStorage.signOut()
+                state.isSyncEnabled = false
+                state.lastSyncDate = nil
+                return .none
+
+            case .syncNow:
+                state.isSyncing = true
+                state.syncError = nil
+                let lastChange = state.jobs.map(\.updatedAt).max() ?? Date()
+                let localState = SyncState(
+                    lastModified: lastChange,
+                    jobs: Array(state.jobs),
+                    settings: state.settings
+                )
+                return .concatenate(
+                    .cancel(id: SyncDebounceID.sync),
+                    .run { [syncStorage, baseState] send in
+                        // 1. Read remote
+                        let remote = try await syncStorage.read()
+                        let base = await baseState.load()
+
+                        // 2. Merge
+                        let merged: SyncState
+                        if let (remoteData, remoteVersion) = remote {
+                            let remoteState = try JSONDecoder().decode(SyncState.self, from: remoteData)
+                            guard remoteState.version <= SyncState.currentVersion else {
+                                throw SyncStorageError.storageError("Remote state version \(remoteState.version) is newer than supported version \(SyncState.currentVersion). Please update the app.")
+                            }
+                            let result = StateMerger.merge(base: base, local: localState, remote: remoteState)
+                            switch result {
+                            case .clean(let s): merged = s
+                            case .resolved(let s): merged = s
+                            }
+
+                            // 3. Write back (conditional on version), skip if nothing changed
+                            if merged.jobs == remoteState.jobs && merged.settings == remoteState.settings {
+                                try? await baseState.save(merged)
+                                try? await baseState.saveVersion(remoteVersion)
+                            } else {
+                                let mergedData = try JSONEncoder().encode(merged)
+                                let newVersion = try await syncStorage.write(mergedData, remoteVersion)
+                                try? await baseState.save(merged)
+                                try? await baseState.saveVersion(newVersion)
+                            }
+                        } else {
+                            // No remote state yet: upload local as initial
+                            merged = localState
+                            let data = try JSONEncoder().encode(merged)
+                            let newVersion = try await syncStorage.write(data, nil)
+                            try? await baseState.save(merged)
+                            try? await baseState.saveVersion(newVersion)
+                        }
+
+                        await send(.syncCompleted(.success(merged)))
+                    } catch: { error, send in
+                        if let storageError = error as? SyncStorageError, case .conflict = storageError {
+                            await send(.syncConflict)
+                        } else {
+                            await send(.syncCompleted(.failure(error)))
+                        }
+                    }
+                )
+
+            case .syncCompleted(.success(let merged)):
+                state.isSyncing = false
+                state.isSyncEnabled = true
+                state.syncRetryCount = 0
+                state.lastSyncDate = Date()
+                // Apply merged state
+                state.jobs = IdentifiedArray(uniqueElements: merged.jobs)
+                state.settings = merged.settings
+                state.cuttle.jobs = Array(state.jobs)
+                // Refresh the detail view if it's showing a job that was updated
+                if let detailId = state.jobDetail?.job.id,
+                   let updatedJob = state.jobs[id: detailId] {
+                    let selectedTab = state.jobDetail?.selectedTab
+                    state.jobDetail = JobDetailFeature.State(
+                        job: updatedJob,
+                        apiKey: state.claudeAPIKey,
+                        userProfile: state.settings.userProfile
+                    )
+                    if let tab = selectedTab {
+                        state.jobDetail?.selectedTab = tab
+                    }
+                }
+                return .merge(saveJobs(state.jobs), saveSettings(state.settings))
+
+            case .syncCompleted(.failure(let error)):
+                state.isSyncing = false
+                state.syncError = error.localizedDescription
+                state.syncRetryCount = 0
+                return .none
+
+            case .syncConflict:
+                state.syncRetryCount += 1
+                if state.syncRetryCount > 3 {
+                    state.syncError = "Sync conflict could not be resolved after multiple retries."
+                    state.isSyncing = false
+                    state.syncRetryCount = 0
+                    return .none
+                }
+                let delay = Double(state.syncRetryCount) * 1.0
+                return .run { send in
+                    try await Task.sleep(for: .seconds(delay))
+                    await send(.syncNow)
+                }
             }
         }
         .ifLet(\.jobDetail, action: \.jobDetail) {
             JobDetailFeature()
         }
+    }
+
+    // MARK: - Sync Helpers
+
+    private func debouncedSync(_ state: State) -> Effect<Action> {
+        guard state.isSyncEnabled else { return .none }
+        return .run { send in
+            try await Task.sleep(for: .seconds(5))
+            await send(.syncNow)
+        }
+        .cancellable(id: SyncDebounceID.sync, cancelInFlight: true)
     }
 
     // MARK: - Helpers
