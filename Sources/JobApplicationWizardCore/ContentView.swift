@@ -53,19 +53,19 @@ public struct ContentView: View {
                 ToolbarItemGroup(placement: .navigation) {
                     if columnVisibility != .all {
                         SettingsLink {
-                            Image(systemName: "gear").padding(4)
+                            Image(systemName: "gear").padding(DS.Spacing.xxs)
                         }
                         .buttonStyle(.plain)
                         .help("Settings")
 
                         Button { store.send(.importAll) } label: {
-                            Image(systemName: "square.and.arrow.down").padding(4)
+                            Image(systemName: "square.and.arrow.down").padding(DS.Spacing.xxs)
                         }
                         .buttonStyle(.plain)
                         .help("Import from JSON backup")
 
                         Button { store.send(.exportAll) } label: {
-                            Image(systemName: "square.and.arrow.up").padding(4)
+                            Image(systemName: "square.and.arrow.up").padding(DS.Spacing.xxs)
                         }
                         .buttonStyle(.plain)
                         .help("Export full JSON backup")
@@ -254,8 +254,8 @@ struct FilterPill: View {
                 Text("\(count)")
                     .font(DS.Typography.caption2)
                     .padding(.horizontal, DS.Spacing.xs)
-                    .padding(.vertical, 1)
-                    .background(selected ? Color.white.opacity(DS.Color.Opacity.strong) : Color.secondary.opacity(DS.Color.Opacity.wash))
+                    .padding(.vertical, DS.Spacing.xxxs)
+                    .background(selected ? DS.Color.textBackground.opacity(DS.Color.Opacity.strong) : Color.secondary.opacity(DS.Color.Opacity.wash))
                     .clipShape(Capsule())
             }
         }
@@ -325,7 +325,7 @@ struct FeatureRow: View {
                 .font(DS.Typography.heading2)
                 .foregroundColor(color)
                 .frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                 Text(title).fontWeight(.semibold)
                 Text(desc).font(DS.Typography.caption).foregroundColor(.secondary)
             }

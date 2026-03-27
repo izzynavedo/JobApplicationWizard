@@ -11,12 +11,12 @@ public struct DebugPanel: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: DS.Spacing.lg) {
             Label("Debug Menu", systemImage: "ladybug")
-                .font(.headline)
+                .font(DS.Typography.heading3)
 
             GroupBox("Cuttle AI") {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                     LabeledContent("Context") {
                         Text(store.cuttle.currentContext.displayLabel(jobs: Array(store.jobs)))
                     }
@@ -36,20 +36,20 @@ public struct DebugPanel: View {
                             .monospacedDigit()
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, DS.Spacing.xxs)
             }
 
             GroupBox("Cuttlefish Circle") {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                     JitterCircle()
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
+                        .padding(.vertical, DS.Spacing.sm)
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, DS.Spacing.xxs)
             }
 
             GroupBox("App State") {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: DS.Spacing.sm) {
                     LabeledContent("Jobs loaded") {
                         Text("\(store.jobs.count)")
                             .monospacedDigit()
@@ -59,15 +59,15 @@ public struct DebugPanel: View {
                     }
                     LabeledContent("ACP connected") {
                         Image(systemName: store.acpConnection.isConnected ? "checkmark.circle.fill" : "xmark.circle")
-                            .foregroundColor(store.acpConnection.isConnected ? .green : .secondary)
+                            .foregroundColor(store.acpConnection.isConnected ? DS.Color.success : DS.Color.textSecondary)
                     }
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, DS.Spacing.xxs)
             }
 
             Spacer()
         }
-        .padding(20)
+        .padding(DS.Spacing.xl)
         .frame(minWidth: 320, minHeight: 300)
     }
 }

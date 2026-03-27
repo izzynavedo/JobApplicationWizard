@@ -80,7 +80,7 @@ public struct CalendarEventPickerView: View {
     private var permissionDeniedView: some View {
         VStack(spacing: DS.Spacing.md) {
             Image(systemName: "calendar.badge.exclamationmark")
-                .font(.system(size: 36))
+                .font(DS.Typography.displayMedium)
                 .foregroundColor(DS.Color.textSecondary)
             Text("Calendar access required")
                 .font(DS.Typography.heading3)
@@ -102,7 +102,7 @@ public struct CalendarEventPickerView: View {
     private var emptyStateView: some View {
         VStack(spacing: DS.Spacing.sm) {
             Image(systemName: "calendar.badge.minus")
-                .font(.system(size: 36))
+                .font(DS.Typography.displayMedium)
                 .foregroundColor(DS.Color.textSecondary)
             Text(
                 searchQuery.isEmpty
@@ -164,7 +164,7 @@ public struct CalendarEventRow: View {
             Circle()
                 .fill(Color(hex: event.calendarColor) ?? .gray)
                 .frame(width: 10, height: 10)
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: DS.Spacing.xxxs) {
                 Text(event.title)
                     .font(DS.Typography.subheadline)
                     .lineLimit(1)
@@ -183,6 +183,6 @@ public struct CalendarEventRow: View {
             }
             Spacer()
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, DS.Spacing.xxxs)
     }
 }

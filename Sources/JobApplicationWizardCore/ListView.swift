@@ -65,7 +65,7 @@ public struct ListView: View {
                                 ForEach(job.labels.prefix(2)) { label in
                                     Text(label.name)
                                         .font(DS.Typography.micro)
-                                        .padding(.horizontal, DS.Spacing.xs).padding(.vertical, 1)
+                                        .padding(.horizontal, DS.Spacing.xs).padding(.vertical, DS.Spacing.xxxs)
                                         .background(label.color.opacity(DS.Color.Opacity.tint))
                                         .foregroundColor(label.color)
                                         .clipShape(Capsule())
@@ -83,7 +83,7 @@ public struct ListView: View {
                                 }
                             }
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, DS.Spacing.xxxs)
                         .cuttleDockable(context: .job(job.id))
                         .dropDestination(for: URL.self) { urls, _ in
                             guard !urls.isEmpty else { return false }
@@ -109,14 +109,14 @@ public struct ListView: View {
 
                     TableColumn("Location", value: \.location) { job in
                         Text(job.location.isEmpty ? "—" : job.location)
-                            .foregroundColor(job.location.isEmpty ? Color.secondary.opacity(0.3) : .secondary)
+                            .foregroundColor(job.location.isEmpty ? Color.secondary.opacity(DS.Color.Opacity.border) : DS.Color.textSecondary)
                             .lineLimit(1)
                     }
                     .width(90)
 
                     TableColumn("Salary", value: \.salary) { job in
                         Text(job.salary.isEmpty ? "—" : job.salary)
-                            .foregroundColor(job.salary.isEmpty ? Color.secondary.opacity(0.3) : .green)
+                            .foregroundColor(job.salary.isEmpty ? Color.secondary.opacity(DS.Color.Opacity.border) : DS.Color.success)
                             .lineLimit(1)
                     }
                     .width(160)

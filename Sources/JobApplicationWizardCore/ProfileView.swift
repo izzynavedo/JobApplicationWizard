@@ -148,7 +148,7 @@ private struct TagInputSection: View {
                                 tags.removeAll { $0 == tag }
                             } label: {
                                 Image(systemName: "xmark")
-                                    .font(.system(size: 9, weight: .bold))
+                                    .font(DS.Typography.micro)
                             }
                             .buttonStyle(.plain)
                         }

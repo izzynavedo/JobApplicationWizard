@@ -47,5 +47,7 @@ extension DS.Color {
         public static let strong: Double = 0.25
         /// Border-weight opacity for secondary strokes: 0.3
         public static let border: Double = 0.3
+        /// Dimming overlay: 0.4
+        public static let dim: Double = 0.4
     }
 }

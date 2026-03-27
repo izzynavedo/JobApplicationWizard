@@ -140,14 +140,14 @@ struct KanbanRow: View {
                     .font(DS.Typography.caption)
                     .fontWeight(.semibold)
                     .padding(.horizontal, DS.Spacing.sm)
-                    .padding(.vertical, 2)
-                    .background(status.color.opacity(0.15))
+                    .padding(.vertical, DS.Spacing.xxxs)
+                    .background(status.color.opacity(DS.Color.Opacity.tint))
                     .foregroundColor(status.color)
                     .clipShape(Capsule())
             }
             .frame(minWidth: 100, idealWidth: 130, maxWidth: 150, alignment: .leading)
             .padding(.vertical, DS.Spacing.md)
-            .padding(.leading, 12)
+            .padding(.leading, DS.Spacing.md)
             .cuttleDockable(context: .status(status))
 
             Rectangle()
@@ -337,7 +337,7 @@ struct JobCard: View {
                             Spacer()
                             Text(job.salary)
                                 .font(DS.Typography.caption2)
-                                .foregroundColor(.green)
+                                .foregroundColor(DS.Color.success)
                         }
                     }
                 }
@@ -388,7 +388,7 @@ struct JobCard: View {
                         let allDone = done == total
                         Label("\(done)/\(total)", systemImage: allDone ? "checkmark.circle.fill" : "checklist")
                             .font(DS.Typography.caption2)
-                            .foregroundColor(allDone ? .green : .secondary)
+                            .foregroundColor(allDone ? DS.Color.success : DS.Color.textSecondary)
                     }
                     if !job.contacts.isEmpty {
                         Label("\(job.contacts.count)", systemImage: "person.circle")
@@ -464,11 +464,11 @@ struct TaskPopoverView: View {
                 .font(DS.Typography.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(DS.Color.textSecondary)
-                .padding(.bottom, 2)
+                .padding(.bottom, DS.Spacing.xxxs)
             ForEach(job.currentTasks) { task in
                 HStack(spacing: DS.Spacing.xs) {
                     Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                        .foregroundColor(task.isCompleted ? .green : .secondary)
+                        .foregroundColor(task.isCompleted ? DS.Color.success : DS.Color.textSecondary)
                         .font(DS.Typography.caption)
                     Text(task.title)
                         .font(DS.Typography.caption)
@@ -507,7 +507,7 @@ func interviewCountdownInfo(rounds: [InterviewRound], now: Date = Date()) -> Int
         let hours = Int(agoInterval / 3600)
         let minutes = max(0, Int(agoInterval / 60))
         let agoText = hours > 0 ? "Interview was \(hours)h ago" : "Interview was \(minutes)m ago"
-        return InterviewCountdownInfo(text: agoText, color: .gray, isItalic: true)
+        return InterviewCountdownInfo(text: agoText, color: DS.Color.textSecondary, isItalic: true)
     }
 
     return nil
@@ -538,10 +538,10 @@ private func countdownInfoForFuture(date: Date, now: Date) -> InterviewCountdown
 struct ExcitementDots: View {
     let level: Int
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: DS.Spacing.xxxs) {
             ForEach(1...5, id: \.self) { i in
                 Circle()
-                    .fill(i <= level ? Color.orange : Color.secondary.opacity(0.2))
+                    .fill(i <= level ? DS.Color.warning : Color.secondary.opacity(DS.Color.Opacity.wash))
                     .frame(width: 5, height: 5)
             }
         }
@@ -555,13 +555,13 @@ struct EmptyColumnView: View {
     var body: some View {
         VStack(spacing: DS.Spacing.sm) {
             Image(systemName: status.icon)
-                .font(.largeTitle)
-                .foregroundColor(status.color.opacity(0.3))
+                .font(DS.Typography.displaySmall)
+                .foregroundColor(status.color.opacity(DS.Color.Opacity.border))
             Text("No \(status.rawValue) jobs")
                 .font(DS.Typography.caption)
                 .foregroundColor(DS.Color.textSecondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 32)
+        .padding(.vertical, DS.Spacing.xxxl)
     }
 }
