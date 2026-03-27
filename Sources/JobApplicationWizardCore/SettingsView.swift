@@ -1,4 +1,5 @@
 import SwiftUI
+import JobApplicationShared
 import ComposableArchitecture
 
 public enum SettingsTab: Hashable {
@@ -359,6 +360,54 @@ private struct DataSettingsTab: View {
                         .foregroundColor(DS.Color.textSecondary)
                 }
                 .padding(.vertical, DS.Spacing.xxs)
+            }
+
+            Section("Google Drive Sync") {
+                if store.isSyncEnabled {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                        Text("Connected")
+                        Spacer()
+                        if store.isSyncing {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                    }
+
+                    if let lastSync = store.lastSyncDate {
+                        HStack {
+                            Text("Last synced")
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(lastSync, style: .relative)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Button("Sync Now") {
+                        store.send(.syncNow)
+                    }
+                    .disabled(store.isSyncing)
+
+                    Button("Disconnect", role: .destructive) {
+                        store.send(.syncSignOut)
+                    }
+                    .foregroundColor(.red)
+                } else {
+                    Button("Sign in with Google") {
+                        store.send(.syncSignIn)
+                    }
+                    Text("Sync your jobs across Mac and iOS via Google Drive.")
+                        .font(DS.Typography.caption)
+                        .foregroundColor(DS.Color.textSecondary)
+                }
+
+                if let error = store.syncError {
+                    Text(error)
+                        .font(DS.Typography.caption)
+                        .foregroundColor(.red)
+                }
             }
 
             Section("Danger Zone") {
