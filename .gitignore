@@ -11,3 +11,4 @@ JobApplicationWizard.dmg
 .env.local
 .claude/worktrees/
 iOS/build/
+Sources/JobApplicationShared/Secrets.swift
