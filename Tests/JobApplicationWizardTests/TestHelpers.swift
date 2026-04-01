@@ -24,7 +24,7 @@ extension JobApplication {
         excitement: Int = 3,
         hasPDF: Bool = false,
         pdfPath: String? = nil,
-        chatHistory: [ChatMessage] = [],
+        chatSessions: [ChatSession] = [],
         documents: [JobDocument] = [],
         tasks: [SubTask] = []
     ) -> JobApplication {
@@ -49,7 +49,7 @@ extension JobApplication {
         job.excitement = excitement
         job.hasPDF = hasPDF
         job.pdfPath = pdfPath
-        job.chatHistory = chatHistory
+        job.chatSessions = chatSessions
         job.documents = documents
         job.tasks = tasks
         return job

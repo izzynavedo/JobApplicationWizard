@@ -1,5 +1,6 @@
 import SwiftUI
 import ComposableArchitecture
+import JobApplicationShared
 
 // MARK: - CuttleView
 
@@ -35,17 +36,6 @@ public struct CuttleView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         store.send(.collapse)
-                    }
-                    .accessibilityHidden(true)
-            }
-
-            // Click-outside-to-dismiss overlay for context transition CTA.
-            // Defaults to "Start Fresh" when clicking outside.
-            if store.showContextTransitionAlert {
-                Color.clear
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        store.send(.cancelContextTransition)
                     }
                     .accessibilityHidden(true)
             }
@@ -95,16 +85,10 @@ public struct CuttleView: View {
                         }
                 )
 
-            // Inline context transition CTA
-            if store.showContextTransitionAlert {
-                contextTransitionCTA
-                    .position(contextCTAPosition)
-                    .transition(.scale(scale: 0.9).combined(with: .opacity))
-            }
         }
         .animation(.spring(response: 0.35, dampingFraction: 0.7), value: store.position)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: store.isExpanded)
-        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: store.showContextTransitionAlert)
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: store.isSessionSidebarVisible)
         .onChange(of: store.isLoading) { _, loading in
             if loading {
                 thinkingAmplitude = 0.01
@@ -200,6 +184,29 @@ public struct CuttleView: View {
     // MARK: - Expanded Chat View
 
     private var expandedView: some View {
+        HStack(spacing: 0) {
+            if store.isSessionSidebarVisible {
+                sessionSidebar
+                    .frame(width: 160)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+
+                Divider()
+            }
+
+            chatColumn
+        }
+        .frame(width: chatSize.width, height: chatSize.height)
+        .glassSurface(radius: DS.Radius.xxl, shadow: DS.Shadow.noShadow)
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xxl))
+        .dsShadow(DS.Shadow.floating)
+        .overlay(alignment: .bottomTrailing) {
+            resizeHandle
+        }
+    }
+
+    // MARK: - Chat Column
+
+    private var chatColumn: some View {
         VStack(spacing: 0) {
             // Header with provider info
             headerBar
@@ -253,6 +260,26 @@ public struct CuttleView: View {
                             withAnimation { proxy.scrollTo("bottom") }
                         }
                     }
+                    .onChange(of: store.isExpanded) { _, expanded in
+                        if expanded {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 100_000_000)
+                                withAnimation { proxy.scrollTo("bottom") }
+                            }
+                        }
+                    }
+                    .onAppear {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 150_000_000)
+                            proxy.scrollTo("bottom")
+                        }
+                    }
+                    .onChange(of: store.activeSessionID) { _, _ in
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 100_000_000)
+                            withAnimation { proxy.scrollTo("bottom") }
+                        }
+                    }
                 }
 
                 Divider()
@@ -269,12 +296,56 @@ public struct CuttleView: View {
                 )
             }
         }
-        .frame(width: chatSize.width, height: chatSize.height)
-        .glassSurface(radius: DS.Radius.xxl, shadow: DS.Shadow.noShadow)
-        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.xxl))
-        .dsShadow(DS.Shadow.floating)
-        .overlay(alignment: .bottomTrailing) {
-            resizeHandle
+    }
+
+    // MARK: - Session Sidebar
+
+    private var sessionSidebar: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Sessions")
+                    .font(DS.Typography.caption).fontWeight(.semibold)
+                Spacer()
+                Button { store.send(.clearChat) } label: {
+                    Image(systemName: "plus")
+                        .font(DS.Typography.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundColor(DS.Color.textSecondary)
+                .help("New session")
+            }
+            .padding(.horizontal, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.sm)
+
+            Divider()
+
+            ScrollView {
+                let sessions = Array(currentContextSessions.reversed())
+                LazyVStack(spacing: 2) {
+                    ForEach(sessions) { session in
+                        SessionRow(
+                            session: session,
+                            isActive: session.id == store.activeSessionID,
+                            onSelect: { store.send(.selectSession(session.id)) },
+                            onDelete: { store.send(.deleteSession(session.id)) }
+                        )
+                    }
+                }
+                .padding(.vertical, DS.Spacing.xs)
+                .padding(.horizontal, DS.Spacing.xxs)
+            }
+        }
+        .background(DS.Color.controlBackground.opacity(0.5))
+    }
+
+    private var currentContextSessions: [ChatSession] {
+        switch store.currentContext {
+        case .global:
+            return store.globalChatSessions
+        case .status(let status):
+            return store.statusChatSessions[status.rawValue] ?? []
+        case .job:
+            return store.activeJobSessions
         }
     }
 
@@ -318,6 +389,16 @@ public struct CuttleView: View {
 
     private var headerBar: some View {
         HStack(spacing: DS.Spacing.xs) {
+            Button {
+                store.send(.toggleSessionSidebar)
+            } label: {
+                Image(systemName: "sidebar.left")
+                    .font(DS.Typography.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundColor(store.isSessionSidebarVisible ? .accentColor : DS.Color.textSecondary)
+            .help("Toggle sessions sidebar")
+
             Text(store.currentContext.displayLabel(jobs: store.jobs))
                 .font(DS.Typography.caption).fontWeight(.semibold)
                 .lineLimit(1)
@@ -337,7 +418,7 @@ public struct CuttleView: View {
             }
         }
         .padding(.horizontal, DS.Spacing.lg).padding(.vertical, DS.Spacing.sm)
-        .background(DS.Color.controlBackground.opacity(0.5))
+        .background { DS.Color.controlBackground.opacity(0.5) }
         .contentShape(Rectangle())
         .gesture(
             DragGesture(coordinateSpace: .named("cuttle-window"))
@@ -426,63 +507,6 @@ public struct CuttleView: View {
                 "Prep me for interviews",
             ]
         }
-    }
-
-    // MARK: - Context Transition CTA
-
-    private var contextTransitionCTA: some View {
-        VStack(spacing: DS.Spacing.pillH) {
-            Text("Switch to \(store.alertPendingContext?.displayLabel(jobs: store.jobs) ?? "new context")?")
-                .font(DS.Typography.subheadlineSemibold)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-
-            HStack(spacing: DS.Spacing.md) {
-                Button("Carry Chat") {
-                    store.send(.contextTransitionConfirmed(carry: true))
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-
-                Button("Start Fresh") {
-                    store.send(.contextTransitionConfirmed(carry: false))
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-            }
-        }
-        .padding(.horizontal, DS.Spacing.xl)
-        .padding(.vertical, DS.Spacing.lg)
-        .frame(width: 260)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: DS.Radius.xl))
-        .overlay(
-            RoundedRectangle(cornerRadius: DS.Radius.xl)
-                .stroke(DS.Color.borderSubtle, lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(DS.Color.Opacity.tint), radius: 8, y: 2)
-    }
-
-    /// Position the CTA card below the blob, clamped to window bounds.
-    private var contextCTAPosition: CGPoint {
-        let blob = store.position
-        let windowSize = store.windowSize
-        let ctaWidth: CGFloat = 260
-        let ctaHeight: CGFloat = 80
-        let gap: CGFloat = 8
-
-        var x = blob.x
-        var y = blob.y + Self.collapsedSize / 2 + gap + ctaHeight / 2
-
-        // Clamp horizontal
-        let margin: CGFloat = 8
-        x = max(margin + ctaWidth / 2, min(x, windowSize.width - margin - ctaWidth / 2))
-
-        // If it would go below the window, show above the blob instead
-        if y + ctaHeight / 2 > windowSize.height - margin {
-            y = blob.y - Self.collapsedSize / 2 - gap - ctaHeight / 2
-        }
-
-        return CGPoint(x: x, y: y)
     }
 
     // MARK: - Not Ready View

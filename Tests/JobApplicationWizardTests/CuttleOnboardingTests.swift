@@ -231,7 +231,7 @@ final class CuttleOnboardingTests: XCTestCase {
         let store = TestStore(initialState: state) { CuttleOnboardingFeature() }
 
         await store.send(.nextStep) {
-            $0.currentStep = .expandCollapse
+            $0.currentStep = .dragToDock
         }
     }
 
@@ -248,24 +248,24 @@ final class CuttleOnboardingTests: XCTestCase {
         await store.receive(\.delegate.expandCuttle)
     }
 
-    func testNextStepFromChatBasicsCollapsesCuttle() async {
+    func testNextStepFromChatBasicsGoesToSessions() async {
         var state = CuttleOnboardingFeature.State()
         state.isActive = true
         state.aiReady = true
         state.currentStep = .chatBasics
         let store = TestStore(initialState: state) { CuttleOnboardingFeature() }
+        store.exhaustivity = .off
 
         await store.send(.nextStep) {
-            $0.currentStep = .dragToDock
+            $0.currentStep = .sessions
         }
-        await store.receive(\.delegate.collapseCuttle)
     }
 
     func testNextStepOnLastStepFinishes() async {
         var state = CuttleOnboardingFeature.State()
         state.isActive = true
         state.aiReady = true
-        state.currentStep = .resize
+        state.currentStep = .collapseChat
         let store = TestStore(initialState: state) { CuttleOnboardingFeature() }
 
         await store.send(.nextStep)
@@ -281,12 +281,13 @@ final class CuttleOnboardingTests: XCTestCase {
         var state = CuttleOnboardingFeature.State()
         state.isActive = true
         state.aiReady = true
-        state.currentStep = .carryOrFresh
+        state.currentStep = .sessions
         let store = TestStore(initialState: state) { CuttleOnboardingFeature() }
 
         await store.send(.previousStep) {
-            $0.currentStep = .dragToDock
+            $0.currentStep = .chatBasics
         }
+        await store.receive(\.delegate.hideSessionSidebar)
     }
 
     func testPreviousStepAtFirstDoesNothing() async {
@@ -358,10 +359,10 @@ final class CuttleOnboardingTests: XCTestCase {
     func testStepCountWithAiReady() {
         var state = CuttleOnboardingFeature.State()
         state.aiReady = true
-        XCTAssertEqual(state.steps.count, 6)
+        XCTAssertEqual(state.steps.count, 7)
 
         state.aiReady = false
-        XCTAssertEqual(state.steps.count, 8)
+        XCTAssertEqual(state.steps.count, 9)
     }
 
     // MARK: - State Properties
@@ -379,7 +380,7 @@ final class CuttleOnboardingTests: XCTestCase {
     func testIsLastStep() {
         var state = CuttleOnboardingFeature.State()
         state.aiReady = true
-        state.currentStep = .resize
+        state.currentStep = .collapseChat
         XCTAssertTrue(state.isLastStep)
 
         state.currentStep = .meetCuttle

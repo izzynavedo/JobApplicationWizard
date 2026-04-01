@@ -36,7 +36,8 @@ let package = Package(
             dependencies: [
                 .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
             ],
-            path: "Sources/JobApplicationShared"
+            path: "Sources/JobApplicationShared",
+            exclude: ["Secrets.swift.example"]
         ),
         .target(
             name: "JobApplicationWizardCore",

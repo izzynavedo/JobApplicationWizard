@@ -114,27 +114,27 @@ final class CuttleFeatureTests: XCTestCase {
         XCTAssertNil(store.state.pendingContext)
     }
 
-    func testDragEndedShowsAlertWithActiveChat() async {
+    func testDragEndedSwitchesContextSilentlyWithActiveChat() async {
         var state = CuttleFeature.State()
         state.isDragging = true
         state.pendingContext = .status(.rejected)
         state.currentContext = .global
         state.chatMessages = [ChatMessage(role: .user, content: "Hello")]
         let store = TestStore(initialState: state) { CuttleFeature() }
+        store.exhaustivity = .off
 
-        await store.send(.dragEnded(CGPoint(x: 100, y: 100))) {
-            $0.isDragging = false
-            $0.pendingContext = nil
-            $0.alertPendingContext = .status(.rejected)
-            $0.showContextTransitionAlert = true
-            $0.mood = .transitioning
-        }
+        await store.send(.dragEnded(CGPoint(x: 100, y: 100)))
+
+        XCTAssertFalse(store.state.isDragging)
+        XCTAssertNil(store.state.pendingContext)
+        XCTAssertTrue(store.state.isExpanded)
+        XCTAssertEqual(store.state.currentContext, .status(.rejected))
     }
 
-    func testDragEndedCollapsesWhenExpanded() async {
+    func testDragEndedExpandsWhenDocking() async {
         var state = CuttleFeature.State()
         state.isDragging = true
-        state.isExpanded = true
+        state.isExpanded = false
         state.pendingContext = .global
         state.currentContext = .global
         state.chatMessages = []
@@ -143,7 +143,7 @@ final class CuttleFeatureTests: XCTestCase {
 
         await store.send(.dragEnded(CGPoint(x: 100, y: 100)))
 
-        XCTAssertFalse(store.state.isExpanded)
+        XCTAssertTrue(store.state.isExpanded)
     }
 
     func testDragEndedClampsWhenNoPendingContext() async {
@@ -161,89 +161,35 @@ final class CuttleFeatureTests: XCTestCase {
         }
     }
 
-    // MARK: - Context Transition (carry / fresh)
-
-    func testContextTransitionCarryKeepsMessages() async {
-        var state = CuttleFeature.State()
-        state.alertPendingContext = .status(.interview)
-        state.showContextTransitionAlert = true
-        state.currentContext = .global
-        state.chatMessages = [ChatMessage(role: .user, content: "Hello")]
-        state.isLoading = true
-        let store = TestStore(initialState: state) { CuttleFeature() }
-        store.exhaustivity = .off
-
-        await store.send(.contextTransitionConfirmed(carry: true))
-
-        XCTAssertEqual(store.state.currentContext, .status(.interview))
-        XCTAssertFalse(store.state.showContextTransitionAlert)
-        XCTAssertNil(store.state.alertPendingContext)
-        XCTAssertFalse(store.state.isLoading)
-        // Messages carried over
-        XCTAssertEqual(store.state.chatMessages.count, 1)
-        XCTAssertEqual(store.state.chatMessages[0].content, "Hello")
-    }
-
-    func testContextTransitionFreshLoadsNewHistory() async {
-        var state = CuttleFeature.State()
-        state.alertPendingContext = .status(.interview)
-        state.showContextTransitionAlert = true
-        state.currentContext = .global
-        state.chatMessages = [ChatMessage(role: .user, content: "Old message")]
-        state.globalChatHistory = []
-        state.statusChatHistories = ["Interview": [ChatMessage(role: .user, content: "Prev interview chat")]]
-        let store = TestStore(initialState: state) { CuttleFeature() }
-        store.exhaustivity = .off
-
-        await store.send(.contextTransitionConfirmed(carry: false))
-
-        XCTAssertEqual(store.state.currentContext, .status(.interview))
-        // Old message was saved to global, new history loaded
-        XCTAssertEqual(store.state.globalChatHistory.count, 1)
-        XCTAssertEqual(store.state.globalChatHistory[0].content, "Old message")
-        XCTAssertEqual(store.state.chatMessages.count, 1)
-        XCTAssertEqual(store.state.chatMessages[0].content, "Prev interview chat")
-    }
-
-    func testCancelContextTransitionDefaultsToStartFresh() async {
-        var state = CuttleFeature.State()
-        state.alertPendingContext = .status(.interview)
-        state.showContextTransitionAlert = true
-        state.currentContext = .global
-        state.dropZones = [
-            DropZone(id: "global", frame: CGRect(x: 50, y: 50, width: 100, height: 40), context: .global)
-        ]
-        let store = TestStore(initialState: state) { CuttleFeature() }
-        store.exhaustivity = .off
-
-        await store.send(.cancelContextTransition)
-
-        // cancelContextTransition now defaults to "Start Fresh" (carry: false)
-        await store.receive(\.contextTransitionConfirmed)
-
-        XCTAssertEqual(store.state.currentContext, .status(.interview))
-        XCTAssertFalse(store.state.showContextTransitionAlert)
-    }
-
     // MARK: - Switch Context (silent)
 
     func testSwitchContextSavesAndLoadsHistory() async {
+        let interviewSession = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .assistant, content: "Interview msg")]
+        )
         var state = CuttleFeature.State()
         state.currentContext = .global
         state.chatMessages = [ChatMessage(role: .user, content: "Global msg")]
-        state.statusChatHistories = ["Interview": [ChatMessage(role: .assistant, content: "Interview msg")]]
-        let store = TestStore(initialState: state) { CuttleFeature() }
+        state.activeSessionID = UUID()
+        state.globalChatSessions = [ChatSession(id: state.activeSessionID!, providerType: .claudeAPI, messages: state.chatMessages)]
+        state.statusChatSessions = ["Interview": [interviewSession]]
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+        }
         store.exhaustivity = .off
 
         await store.send(.switchContext(.status(.interview)))
 
-        // Old messages saved to global
-        XCTAssertEqual(store.state.globalChatHistory.count, 1)
-        XCTAssertEqual(store.state.globalChatHistory[0].content, "Global msg")
-        // New messages loaded from interview
+        // Session synced for global context
+        XCTAssertEqual(store.state.globalChatSessions.count, 1)
+        XCTAssertEqual(store.state.globalChatSessions[0].messages[0].content, "Global msg")
+        // Interview session loaded
+        XCTAssertEqual(store.state.currentContext, .status(.interview))
         XCTAssertEqual(store.state.chatMessages.count, 1)
         XCTAssertEqual(store.state.chatMessages[0].content, "Interview msg")
-        XCTAssertEqual(store.state.currentContext, .status(.interview))
         XCTAssertFalse(store.state.acpSentSystemPrompt)
     }
 
@@ -251,7 +197,11 @@ final class CuttleFeatureTests: XCTestCase {
         var state = CuttleFeature.State()
         state.currentContext = .global
         state.isLoading = true
-        let store = TestStore(initialState: state) { CuttleFeature() }
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+        }
         store.exhaustivity = .off
 
         await store.send(.switchContext(.status(.offer)))
@@ -268,6 +218,7 @@ final class CuttleFeatureTests: XCTestCase {
         let store = TestStore(initialState: state) {
             CuttleFeature()
         } withDependencies: {
+            $0.date = .constant(Date())
             $0.claudeClient.chat = { _, _, _, _ in
                 ("AI response", AITokenUsage(inputTokens: 10, outputTokens: 20), nil)
             }
@@ -298,6 +249,7 @@ final class CuttleFeatureTests: XCTestCase {
         let store = TestStore(initialState: state) {
             CuttleFeature()
         } withDependencies: {
+            $0.date = .constant(Date())
             $0.claudeClient.chat = { _, _, _, _ in
                 ("Response", AITokenUsage(inputTokens: 50, outputTokens: 75), nil)
             }
@@ -317,6 +269,7 @@ final class CuttleFeatureTests: XCTestCase {
         let store = TestStore(initialState: state) {
             CuttleFeature()
         } withDependencies: {
+            $0.date = .constant(Date())
             $0.claudeClient.chat = { _, _, _, _ in throw AIError.noAPIKey }
         }
         store.exhaustivity = .off
@@ -326,8 +279,8 @@ final class CuttleFeatureTests: XCTestCase {
 
         XCTAssertFalse(store.state.isLoading)
         XCTAssertNotNil(store.state.error)
-        // User message preserved in global history (via saveChatHistory on failure)
-        XCTAssertEqual(store.state.globalChatHistory.count, 1)
+        // User message preserved (session created on failure)
+        XCTAssertFalse(store.state.globalChatSessions.isEmpty)
     }
 
     // MARK: - AI Response with Job Context (delegate)
@@ -341,6 +294,7 @@ final class CuttleFeatureTests: XCTestCase {
         let store = TestStore(initialState: state) {
             CuttleFeature()
         } withDependencies: {
+            $0.date = .constant(Date())
             $0.claudeClient.chat = { _, _, _, _ in
                 ("AI response", AITokenUsage(inputTokens: 10, outputTokens: 20), nil)
             }
@@ -365,16 +319,20 @@ final class CuttleFeatureTests: XCTestCase {
         state.error = "some error"
         state.tokenUsage = AITokenUsage(inputTokens: 100, outputTokens: 200)
         state.acpSentSystemPrompt = true
-        let store = TestStore(initialState: state) { CuttleFeature() }
-
-        await store.send(.clearChat) {
-            $0.chatMessages = []
-            $0.chatInput = ""
-            $0.error = nil
-            $0.tokenUsage = .zero
-            $0.acpSentSystemPrompt = false
-            $0.globalChatHistory = []
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
         }
+        store.exhaustivity = .off
+
+        await store.send(.clearChat)
+
+        XCTAssertTrue(store.state.chatMessages.isEmpty)
+        XCTAssertEqual(store.state.chatInput, "")
+        XCTAssertNil(store.state.error)
+        XCTAssertEqual(store.state.tokenUsage, .zero)
+        XCTAssertFalse(store.state.acpSentSystemPrompt)
     }
 
     // MARK: - Apply Suggestion
@@ -385,6 +343,7 @@ final class CuttleFeatureTests: XCTestCase {
         let store = TestStore(initialState: state) {
             CuttleFeature()
         } withDependencies: {
+            $0.date = .constant(Date())
             $0.claudeClient.chat = { _, _, _, _ in
                 ("Response", AITokenUsage(inputTokens: 10, outputTokens: 20), nil)
             }
@@ -403,32 +362,37 @@ final class CuttleFeatureTests: XCTestCase {
     // MARK: - Restore From Settings
 
     func testRestoreFromSettings() async {
-        let interviewMsg = ChatMessage(role: .assistant, content: "Interview chat")
-        let globalHistory = [ChatMessage(role: .user, content: "Saved")]
-        let statusHistories = ["Interview": [interviewMsg]]
+        let interviewSession = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .assistant, content: "Interview chat")]
+        )
+        let globalSessions: [ChatSession] = [ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Saved")]
+        )]
+        let statusSessions = ["Interview": [interviewSession]]
         let store = TestStore(initialState: CuttleFeature.State()) { CuttleFeature() }
+        store.exhaustivity = .off
 
-        await store.send(.restoreFromSettings(.status(.interview), globalHistory, statusHistories)) {
-            $0.currentContext = .status(.interview)
-            $0.globalChatHistory = globalHistory
-            $0.statusChatHistories = statusHistories
-            $0.chatMessages = [interviewMsg]
-            $0.tokenUsage = .zero
-            $0.error = nil
-        }
+        await store.send(.restoreFromSettings(.status(.interview), globalSessions, statusSessions))
+
+        XCTAssertEqual(store.state.currentContext, .status(.interview))
+        XCTAssertEqual(store.state.globalChatSessions.count, 1)
+        XCTAssertEqual(store.state.statusChatSessions["Interview"]?.count, 1)
     }
 
     func testRestoreGlobalContext() async {
-        let globalHistory = [ChatMessage(role: .user, content: "Global msg")]
+        let globalSessions = [ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Global msg")]
+        )]
         let store = TestStore(initialState: CuttleFeature.State()) { CuttleFeature() }
+        store.exhaustivity = .off
 
-        await store.send(.restoreFromSettings(.global, globalHistory, [:])) {
-            $0.currentContext = .global
-            $0.globalChatHistory = globalHistory
-            $0.chatMessages = globalHistory
-            $0.tokenUsage = .zero
-            $0.error = nil
-        }
+        await store.send(.restoreFromSettings(.global, globalSessions, [:]))
+
+        XCTAssertEqual(store.state.currentContext, .global)
+        XCTAssertEqual(store.state.globalChatSessions.count, 1)
     }
 
     // MARK: - Position At Drop Zone
@@ -474,46 +438,32 @@ final class CuttleFeatureTests: XCTestCase {
         }
     }
 
-    // MARK: - Chat History Pruning
-
-    func testSaveChatHistoryPrunesAt100Messages() async {
-        var state = CuttleFeature.State()
-        state.currentContext = .global
-        // Create 110 messages
-        state.chatMessages = (0..<110).map { i in
-            ChatMessage(role: .user, content: "Message \(i)")
-        }
-        let store = TestStore(initialState: state) { CuttleFeature() }
-
-        await store.send(.clearChat) {
-            $0.chatMessages = []
-            $0.chatInput = ""
-            $0.error = nil
-            $0.tokenUsage = .zero
-            $0.acpSentSystemPrompt = false
-            $0.globalChatHistory = []
-        }
-
-        // Verify pruning works by sending messages and checking saved history
-        // The clearChat above saves [] to globalChatHistory (pruned from 0).
-        // For a more direct test, let's switch context after filling messages.
-    }
+    // MARK: - Chat Session Persistence
 
     func testSavePrunesOnContextSwitch() async {
-        var state = CuttleFeature.State()
-        state.currentContext = .global
-        state.chatMessages = (0..<110).map { i in
+        let messages = (0..<110).map { i in
             ChatMessage(role: .user, content: "Message \(i)")
         }
-        let store = TestStore(initialState: state) { CuttleFeature() }
+        let session = ChatSession(providerType: .claudeAPI, messages: messages)
+        var state = CuttleFeature.State()
+        state.currentContext = .global
+        state.chatMessages = messages
+        state.activeSessionID = session.id
+        state.globalChatSessions = [session]
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+        }
         store.exhaustivity = .off
 
         await store.send(.switchContext(.status(.interview)))
 
-        // Global history should be pruned to last 100
-        XCTAssertEqual(store.state.globalChatHistory.count, 100)
-        XCTAssertEqual(store.state.globalChatHistory.first?.content, "Message 10")
-        XCTAssertEqual(store.state.globalChatHistory.last?.content, "Message 109")
+        // Messages within the session should be pruned to 100
+        XCTAssertEqual(store.state.globalChatSessions.count, 1)
+        XCTAssertEqual(store.state.globalChatSessions[0].messages.count, 100)
+        XCTAssertEqual(store.state.globalChatSessions[0].messages.first?.content, "Message 10")
+        XCTAssertEqual(store.state.globalChatSessions[0].messages.last?.content, "Message 109")
     }
 
     // MARK: - CuttleContext Properties
@@ -621,5 +571,413 @@ final class CuttleFeatureTests: XCTestCase {
         // Should contain truncated version (300 chars + "...")
         XCTAssertTrue(prompt.contains("..."))
         XCTAssertFalse(prompt.contains(longMessage))
+    }
+
+    // MARK: - Session Creation
+
+    func testSendMessageCreatesSessionAutomatically() async {
+        var state = CuttleFeature.State()
+        state.apiKey = "test-key"
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+            $0.claudeClient.chat = { _, _, _, _ in
+                ("Response", AITokenUsage(inputTokens: 10, outputTokens: 20), nil)
+            }
+        }
+        store.exhaustivity = .off
+
+        XCTAssertNil(store.state.activeSessionID)
+        XCTAssertTrue(store.state.globalChatSessions.isEmpty)
+
+        await store.send(.sendMessage("Hello"))
+        await store.receive(\.aiResponseReceived)
+
+        // A session should have been created and set as active
+        XCTAssertNotNil(store.state.activeSessionID)
+        XCTAssertEqual(store.state.globalChatSessions.count, 1)
+        XCTAssertEqual(store.state.globalChatSessions[0].id, store.state.activeSessionID)
+    }
+
+    func testIdleSessionCreatesNewOnSend() async {
+        // Create a session with a lastMessageAt over an hour ago
+        let oldDate = Date(timeIntervalSinceNow: -7200)
+        let oldSession = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Old msg")],
+            lastMessageAt: oldDate
+        )
+        var state = CuttleFeature.State()
+        state.apiKey = "test-key"
+        state.globalChatSessions = [oldSession]
+        state.activeSessionID = oldSession.id
+        state.chatMessages = oldSession.messages
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.claudeClient.chat = { _, _, _, _ in
+                ("Response", AITokenUsage(inputTokens: 10, outputTokens: 20), nil)
+            }
+            $0.date = .constant(Date())
+        }
+        store.exhaustivity = .off
+
+        await store.send(.sendMessage("New message after long idle"))
+        await store.receive(\.aiResponseReceived)
+
+        // Should have created a second session (old one preserved, new one active)
+        XCTAssertEqual(store.state.globalChatSessions.count, 2)
+        XCTAssertNotEqual(store.state.activeSessionID, oldSession.id)
+    }
+
+    // MARK: - Session Selection
+
+    func testSelectSessionSwitchesActiveSession() async {
+        let session1 = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Session 1")]
+        )
+        let session2 = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Session 2")]
+        )
+        var state = CuttleFeature.State()
+        state.globalChatSessions = [session1, session2]
+        state.activeSessionID = session1.id
+        state.chatMessages = session1.messages
+        let store = TestStore(initialState: state) { CuttleFeature() }
+        store.exhaustivity = .off
+
+        await store.send(.selectSession(session2.id))
+
+        XCTAssertEqual(store.state.activeSessionID, session2.id)
+        XCTAssertEqual(store.state.chatMessages.count, 1)
+        XCTAssertEqual(store.state.chatMessages[0].content, "Session 2")
+    }
+
+    // MARK: - Session Deletion
+
+    func testDeleteSessionFallsBackToAdjacentSession() async {
+        let session1 = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Session 1")]
+        )
+        let session2 = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Session 2")]
+        )
+        var state = CuttleFeature.State()
+        state.globalChatSessions = [session1, session2]
+        state.activeSessionID = session2.id
+        state.chatMessages = session2.messages
+        let store = TestStore(initialState: state) { CuttleFeature() }
+        store.exhaustivity = .off
+
+        await store.send(.deleteSession(session2.id))
+
+        // Should fall back to session1
+        XCTAssertEqual(store.state.activeSessionID, session1.id)
+        XCTAssertEqual(store.state.chatMessages[0].content, "Session 1")
+        XCTAssertEqual(store.state.globalChatSessions.count, 1)
+    }
+
+    func testDeleteLastSessionClearsChat() async {
+        let session = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Only session")]
+        )
+        var state = CuttleFeature.State()
+        state.globalChatSessions = [session]
+        state.activeSessionID = session.id
+        state.chatMessages = session.messages
+        let store = TestStore(initialState: state) { CuttleFeature() }
+        store.exhaustivity = .off
+
+        await store.send(.deleteSession(session.id))
+
+        XCTAssertNil(store.state.activeSessionID)
+        XCTAssertTrue(store.state.chatMessages.isEmpty)
+        XCTAssertTrue(store.state.globalChatSessions.isEmpty)
+    }
+
+    // MARK: - Session Sidebar
+
+    func testToggleSessionSidebar() async {
+        let store = TestStore(initialState: CuttleFeature.State()) { CuttleFeature() }
+
+        await store.send(.toggleSessionSidebar) {
+            $0.isSessionSidebarVisible = true
+        }
+
+        await store.send(.toggleSessionSidebar) {
+            $0.isSessionSidebarVisible = false
+        }
+    }
+
+    // MARK: - Title Generation
+
+    func testSessionTitleGeneratedWritesTitle() async {
+        let session = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Test")]
+        )
+        var state = CuttleFeature.State()
+        state.globalChatSessions = [session]
+        state.activeSessionID = session.id
+        let store = TestStore(initialState: state) { CuttleFeature() }
+
+        await store.send(.sessionTitleGenerated(session.id, "  My Chat Title  ")) {
+            $0.globalChatSessions[0].generatedTitle = "My Chat Title"
+        }
+    }
+
+    func testSessionTitleGeneratedTruncatesAt40Chars() async {
+        let session = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Test")]
+        )
+        var state = CuttleFeature.State()
+        state.globalChatSessions = [session]
+        let store = TestStore(initialState: state) { CuttleFeature() }
+
+        let longTitle = String(repeating: "A", count: 60)
+        await store.send(.sessionTitleGenerated(session.id, longTitle)) {
+            $0.globalChatSessions[0].generatedTitle = String(repeating: "A", count: 40)
+        }
+    }
+
+    // MARK: - Context Switch Cancels In-Flight
+
+    func testContextSwitchClearsInFlightState() async {
+        var state = CuttleFeature.State()
+        state.currentContext = .global
+        state.isLoading = true
+        state.inFlightContext = .global
+        state.inFlightSessionID = UUID()
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+        }
+        store.exhaustivity = .off
+
+        await store.send(.switchContext(.status(.offer)))
+
+        XCTAssertFalse(store.state.isLoading)
+        XCTAssertNil(store.state.inFlightContext)
+        XCTAssertNil(store.state.inFlightSessionID)
+        XCTAssertEqual(store.state.currentContext, .status(.offer))
+    }
+
+    // MARK: - Per-Context Session Pruning
+
+    func testStartNewSessionPrunesWhenOverLimit() async {
+        // Fill global sessions to 55 with old timestamps so idle threshold triggers new session
+        let oldDate = Date(timeIntervalSinceNow: -7200)
+        var state = CuttleFeature.State()
+        state.apiKey = "test-key"
+        state.currentContext = .global
+        state.globalChatSessions = (0..<55).map { i in
+            ChatSession(
+                providerType: .claudeAPI,
+                messages: [ChatMessage(role: .user, content: "Session \(i)")],
+                lastMessageAt: oldDate
+            )
+        }
+        state.activeSessionID = state.globalChatSessions.last?.id
+        state.chatMessages = state.globalChatSessions.last?.messages ?? []
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+            $0.claudeClient.chat = { _, _, _, _ in
+                ("Response", AITokenUsage(inputTokens: 10, outputTokens: 20), nil)
+            }
+        }
+        store.exhaustivity = .off
+
+        await store.send(.sendMessage("New session trigger"))
+        await store.receive(\.aiResponseReceived)
+
+        // Old session synced + new session created, but pruned to 50
+        XCTAssertLessThanOrEqual(store.state.globalChatSessions.count, 50)
+    }
+
+    // MARK: - Legacy Migration
+
+    func testLegacyChatHistoryMigratesToSession() throws {
+        // Simulate old JSON with chatHistory key
+        let oldJSON = """
+        {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "company": "Acme",
+            "title": "Engineer",
+            "status": "Wishlist",
+            "dateAdded": 0,
+            "updatedAt": 0,
+            "chatHistory": [
+                {"id": "00000000-0000-0000-0000-000000000002", "role": "user", "content": "Hello", "timestamp": 0},
+                {"id": "00000000-0000-0000-0000-000000000003", "role": "assistant", "content": "Hi!", "timestamp": 1}
+            ]
+        }
+        """
+        let data = oldJSON.data(using: .utf8)!
+        let job = try JSONDecoder().decode(JobApplication.self, from: data)
+
+        XCTAssertEqual(job.chatSessions.count, 1)
+        XCTAssertEqual(job.chatSessions[0].messages.count, 2)
+        XCTAssertEqual(job.chatSessions[0].providerName, "Claude API")
+        XCTAssertEqual(job.chatSessions[0].providerType, .claudeAPI)
+        XCTAssertEqual(job.chatSessions[0].messages[0].content, "Hello")
+        XCTAssertEqual(job.chatSessions[0].messages[1].content, "Hi!")
+    }
+
+    func testLegacyEmptyChatHistoryMigratesToEmptySessions() throws {
+        let oldJSON = """
+        {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "company": "Acme",
+            "title": "Engineer",
+            "status": "Wishlist",
+            "dateAdded": 0,
+            "updatedAt": 0,
+            "chatHistory": []
+        }
+        """
+        let data = oldJSON.data(using: .utf8)!
+        let job = try JSONDecoder().decode(JobApplication.self, from: data)
+
+        XCTAssertTrue(job.chatSessions.isEmpty)
+    }
+
+    // MARK: - Global Pruning
+
+    func testPruneGlobalSessionsEvictsOldestWhenOverCap() async {
+        var state = CuttleFeature.State()
+        state.currentContext = .global
+        // Create 210 global sessions (cap is 200), each with a distinct timestamp
+        let baseDate = Date(timeIntervalSinceReferenceDate: 0)
+        state.globalChatSessions = (0..<210).map { i in
+            ChatSession(
+                providerType: .claudeAPI,
+                messages: [ChatMessage(role: .user, content: "Msg \(i)")],
+                createdAt: baseDate.addingTimeInterval(Double(i)),
+                lastMessageAt: baseDate.addingTimeInterval(Double(i))
+            )
+        }
+        // Set active to the newest so it's protected from eviction
+        state.activeSessionID = state.globalChatSessions.last?.id
+        state.chatMessages = [ChatMessage(role: .user, content: "Active msg")]
+
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+        }
+        store.exhaustivity = .off
+
+        // switchContext triggers saveChatHistory which calls pruneGlobalSessions
+        await store.send(.switchContext(.status(.interview)))
+
+        // Should be pruned to 200
+        XCTAssertLessThanOrEqual(store.state.globalChatSessions.count, 200)
+        // The active session should be preserved
+        XCTAssertTrue(store.state.globalChatSessions.contains(where: { $0.id == state.activeSessionID }))
+        // The oldest sessions should have been removed
+        XCTAssertFalse(store.state.globalChatSessions.contains(where: { $0.messages.first?.content == "Msg 0" }))
+    }
+
+    func testMessagePruningWithinSessionCapsAt100() async {
+        var state = CuttleFeature.State()
+        state.currentContext = .global
+        state.apiKey = "test-key"
+        // Create a session with 110 messages
+        let session = ChatSession(
+            providerType: .claudeAPI,
+            messages: (0..<110).map { ChatMessage(role: .user, content: "Msg \($0)") }
+        )
+        state.globalChatSessions = [session]
+        state.activeSessionID = session.id
+        state.chatMessages = session.messages
+
+        let store = TestStore(initialState: state) {
+            CuttleFeature()
+        } withDependencies: {
+            $0.date = .constant(Date())
+        }
+        store.exhaustivity = .off
+
+        // switchContext triggers saveChatHistory -> syncCurrentSessionMessages which prunes
+        await store.send(.switchContext(.status(.interview)))
+
+        // The saved global session should be pruned to 100 messages
+        if let savedSession = store.state.globalChatSessions.first(where: { $0.id == session.id }) {
+            XCTAssertEqual(savedSession.messages.count, 100)
+            XCTAssertEqual(savedSession.messages.first?.content, "Msg 10")
+            XCTAssertEqual(savedSession.messages.last?.content, "Msg 109")
+        } else {
+            XCTFail("Session should still exist after context switch")
+        }
+    }
+
+    // MARK: - Delete In-Flight Session
+
+    func testDeleteInFlightSessionCancelsRequest() async {
+        let session = ChatSession(
+            providerType: .claudeAPI,
+            messages: [ChatMessage(role: .user, content: "Pending")]
+        )
+        var state = CuttleFeature.State()
+        state.globalChatSessions = [session]
+        state.activeSessionID = session.id
+        state.chatMessages = session.messages
+        state.isLoading = true
+        state.inFlightSessionID = session.id
+        state.inFlightContext = .global
+        let store = TestStore(initialState: state) { CuttleFeature() }
+        store.exhaustivity = .off
+
+        await store.send(.deleteSession(session.id))
+
+        XCTAssertFalse(store.state.isLoading)
+        XCTAssertNil(store.state.inFlightSessionID)
+        XCTAssertNil(store.state.inFlightContext)
+        XCTAssertTrue(store.state.globalChatSessions.isEmpty)
+    }
+
+    // MARK: - ChatSession Model
+
+    func testProviderNameComputedFromType() {
+        let claudeSession = ChatSession(providerType: .claudeAPI)
+        XCTAssertEqual(claudeSession.providerName, "Claude API")
+
+        let acpSession = ChatSession(providerType: .acpAgent)
+        XCTAssertEqual(acpSession.providerName, "ACP Agent")
+
+        let namedACP = ChatSession(providerType: .acpAgent, agentName: "My Custom Agent")
+        XCTAssertEqual(namedACP.providerName, "My Custom Agent")
+    }
+
+    func testLegacySettingsChatHistoryMigratesToSessions() throws {
+        let oldJSON = """
+        {
+            "globalChatHistory": [
+                {"id": "00000000-0000-0000-0000-000000000001", "role": "user", "content": "Global msg", "timestamp": 0}
+            ],
+            "statusChatHistories": {
+                "Interview": [
+                    {"id": "00000000-0000-0000-0000-000000000002", "role": "assistant", "content": "Interview msg", "timestamp": 0}
+                ]
+            }
+        }
+        """
+        let data = oldJSON.data(using: .utf8)!
+        let settings = try JSONDecoder().decode(AppSettings.self, from: data)
+
+        XCTAssertEqual(settings.globalChatSessions.count, 1)
+        XCTAssertEqual(settings.globalChatSessions[0].messages[0].content, "Global msg")
+        XCTAssertEqual(settings.statusChatSessions["Interview"]?.count, 1)
+        XCTAssertEqual(settings.statusChatSessions["Interview"]?[0].messages[0].content, "Interview msg")
     }
 }
