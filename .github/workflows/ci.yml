@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  macos-build-and-test:
     runs-on: macos-15
     timeout-minutes: 15
     steps:
@@ -30,3 +30,24 @@ jobs:
         with:
           name: failed-snapshots
           path: Tests/**/__Snapshots__/**
+
+  ios-build:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+      - name: Create stub Secrets.swift
+        run: cp Sources/JobApplicationShared/Secrets.swift.example Sources/JobApplicationShared/Secrets.swift
+      - name: Build iOS app
+        run: |
+          xcodebuild build \
+            -project iOS/JobApplicationWizardiOS.xcodeproj \
+            -scheme JobApplicationWizardiOS \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
