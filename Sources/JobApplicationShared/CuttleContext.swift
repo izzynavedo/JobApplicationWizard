@@ -1,7 +1,7 @@
 import Foundation
 
 /// Determines what data Cuttle scopes its AI conversation to.
-public enum CuttleContext: Equatable, Codable {
+public enum CuttleContext: Equatable, Codable, Sendable {
     case global
     case status(JobStatus)
     case job(UUID)

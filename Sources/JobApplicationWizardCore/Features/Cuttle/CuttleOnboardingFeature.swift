@@ -61,11 +61,12 @@ public struct CuttleOnboardingFeature {
         case discoverAgent
         case connectAgent
         case meetCuttle
+        case dragToDock
         case expandCollapse
         case chatBasics
-        case dragToDock
-        case carryOrFresh
+        case sessions
         case resize
+        case collapseChat
 
         public var title: String {
             switch self {
@@ -75,8 +76,9 @@ public struct CuttleOnboardingFeature {
             case .expandCollapse: return "Expand / Collapse"
             case .chatBasics: return "Chat Basics"
             case .dragToDock: return "Drag to Dock"
-            case .carryOrFresh: return "Carry or Fresh"
+            case .sessions: return "Chat Sessions"
             case .resize: return "Resize"
+            case .collapseChat: return "Double-Click to Collapse"
             }
         }
 
@@ -89,15 +91,17 @@ public struct CuttleOnboardingFeature {
             case .meetCuttle:
                 return "This is Cuttle, your AI job search companion. It lives in your workspace and adapts to what you're working on."
             case .expandCollapse:
-                return "Double-click to open the chat window. Double-click again, press Escape, or click outside to close it."
+                return "Docking opens the chat automatically. Double-click to collapse, or press Escape, or click outside."
             case .chatBasics:
                 return "Type a question or click a suggestion chip. Cuttle's answers are scoped to its current context."
             case .dragToDock:
                 return "Drag Cuttle onto any status column, job card, or the All filter to change its context."
-            case .carryOrFresh:
-                return "When switching context with an active conversation, Cuttle asks whether to carry the conversation or start fresh."
+            case .sessions:
+                return "Each context keeps its own chat sessions. Toggle the sidebar to browse past conversations or start a new one."
             case .resize:
                 return "Drag the corner handle to resize the chat window."
+            case .collapseChat:
+                return "Double-click Cuttle to collapse the chat. Press Escape or click outside to close it too."
             }
         }
 
@@ -109,8 +113,9 @@ public struct CuttleOnboardingFeature {
             case .expandCollapse: return .blob
             case .chatBasics: return .chatWindow
             case .dragToDock: return .dockTargets
-            case .carryOrFresh: return .none
+            case .sessions: return .chatWindow
             case .resize: return .chatWindow
+            case .collapseChat: return .blob
             }
         }
     }
@@ -145,6 +150,8 @@ public struct CuttleOnboardingFeature {
             case dismissed
             case expandCuttle
             case collapseCuttle
+            case showSessionSidebar
+            case hideSessionSidebar
             case agentConnected(agentId: String, agentName: String)
         }
     }
@@ -232,36 +239,65 @@ public struct CuttleOnboardingFeature {
                 let steps = state.steps
                 let currentIndex = state.currentStepIndex
                 if currentIndex < steps.count - 1 {
-                    let nextStep = steps[currentIndex + 1]
-                    state.currentStep = nextStep
-                    // Auto-expand Cuttle when reaching chatBasics or resize
-                    if nextStep == .chatBasics || nextStep == .resize {
-                        return .send(.delegate(.expandCuttle))
+                    let leaving = steps[currentIndex]
+                    let entering = steps[currentIndex + 1]
+                    state.currentStep = entering
+
+                    var effects: [Effect<Action>] = []
+
+                    // Hide sidebar when leaving sessions (unless re-entering it)
+                    if leaving == .sessions && entering != .sessions {
+                        effects.append(.send(.delegate(.hideSessionSidebar)))
                     }
-                    // Collapse when leaving chatBasics/resize
-                    if steps[currentIndex] == .chatBasics || steps[currentIndex] == .resize {
-                        return .send(.delegate(.collapseCuttle))
+
+                    let chatSteps: Set<OnboardingStep> = [.chatBasics, .sessions, .resize]
+                    let leavingChat = chatSteps.contains(leaving)
+                    let enteringChat = chatSteps.contains(entering)
+
+                    if enteringChat && !leavingChat {
+                        effects.append(.send(.delegate(.expandCuttle)))
+                    } else if !enteringChat && leavingChat {
+                        effects.append(.send(.delegate(.collapseCuttle)))
                     }
+
+                    if entering == .sessions {
+                        effects.append(.send(.delegate(.showSessionSidebar)))
+                    }
+
+                    return effects.isEmpty ? .none : .merge(effects)
                 } else {
                     return .send(.finish)
                 }
-                return .none
 
             case .previousStep:
                 let steps = state.steps
                 let currentIndex = state.currentStepIndex
                 if currentIndex > 0 {
-                    let prevStep = steps[currentIndex - 1]
-                    // Collapse when leaving chatBasics/resize
-                    if state.currentStep == .chatBasics || state.currentStep == .resize {
-                        state.currentStep = prevStep
-                        return .send(.delegate(.collapseCuttle))
+                    let leaving = steps[currentIndex]
+                    let entering = steps[currentIndex - 1]
+                    state.currentStep = entering
+
+                    var effects: [Effect<Action>] = []
+
+                    if leaving == .sessions && entering != .sessions {
+                        effects.append(.send(.delegate(.hideSessionSidebar)))
                     }
-                    state.currentStep = prevStep
-                    // Expand when going back to chatBasics or resize
-                    if prevStep == .chatBasics || prevStep == .resize {
-                        return .send(.delegate(.expandCuttle))
+
+                    let chatSteps: Set<OnboardingStep> = [.chatBasics, .sessions, .resize]
+                    let leavingChat = chatSteps.contains(leaving)
+                    let enteringChat = chatSteps.contains(entering)
+
+                    if enteringChat && !leavingChat {
+                        effects.append(.send(.delegate(.expandCuttle)))
+                    } else if !enteringChat && leavingChat {
+                        effects.append(.send(.delegate(.collapseCuttle)))
                     }
+
+                    if entering == .sessions {
+                        effects.append(.send(.delegate(.showSessionSidebar)))
+                    }
+
+                    return effects.isEmpty ? .none : .merge(effects)
                 }
                 return .none
 

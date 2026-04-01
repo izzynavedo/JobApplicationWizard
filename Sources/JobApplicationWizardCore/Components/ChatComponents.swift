@@ -126,6 +126,44 @@ public struct FlowLayout: Layout {
     }
 }
 
+// MARK: - Session Row
+
+public struct SessionRow: View {
+    public let session: ChatSession
+    public let isActive: Bool
+    public let onSelect: () -> Void
+    public let onDelete: () -> Void
+
+    public init(session: ChatSession, isActive: Bool, onSelect: @escaping () -> Void, onDelete: @escaping () -> Void) {
+        self.session = session
+        self.isActive = isActive
+        self.onSelect = onSelect
+        self.onDelete = onDelete
+    }
+
+    public var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(session.displayTitle)
+                    .font(DS.Typography.caption2).fontWeight(.medium)
+                    .lineLimit(1)
+                Text(session.lastMessageAt, style: .relative)
+                    .font(DS.Typography.micro)
+                    .foregroundColor(DS.Color.textSecondary)
+            }
+            .padding(.horizontal, DS.Spacing.sm)
+            .padding(.vertical, DS.Spacing.xs)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isActive ? Color.accentColor.opacity(0.15) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small))
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            Button("Delete", role: .destructive, action: onDelete)
+        }
+    }
+}
+
 // MARK: - Chat Input Bar
 
 public struct ChatInputBar: View {
@@ -214,7 +252,7 @@ public struct ChatInputBar: View {
             }
             .onAppear { inputFocused = true }
             HStack {
-                Button("Clear conversation", action: onClear)
+                Button("New session", action: onClear)
                     .buttonStyle(GhostButtonStyle()).font(DS.Typography.footnote)
                     .disabled(!hasMessages)
                 Spacer()

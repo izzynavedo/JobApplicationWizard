@@ -15,7 +15,7 @@ final class JSONRoundTripTests: XCTestCase {
             labels: [JobLabel(name: "Remote", colorHex: "#34C759")],
             contacts: [Contact(name: "Alice", title: "Recruiter", email: "a@co.com", linkedin: "linkedin.com/alice")],
             interviews: [InterviewRound(round: 1, type: "Phone Screen", date: Date(), interviewers: "Bob")],
-            chatHistory: [ChatMessage(role: .user, content: "Help me prepare")],
+            chatSessions: [ChatSession(providerType: .claudeAPI, messages: [ChatMessage(role: .user, content: "Help me prepare")])],
             documents: [JobDocument(filename: "resume.pdf", documentType: .pdf, rawText: "Resume content", fileSize: 1024)],
             tasks: [SubTask(title: "Apply online", forStatus: .applied)]
         )
@@ -68,7 +68,7 @@ final class JSONRoundTripTests: XCTestCase {
         XCTAssertEqual(decodedJob.tasks.count, 1)
         XCTAssertEqual(decodedJob.tasks[0].forStatus, JobStatus.applied)
 
-        XCTAssertEqual(decodedJob.chatHistory.count, 1)
+        XCTAssertEqual(decodedJob.chatSessions.count, 1)
         XCTAssertEqual(decodedJob.documents.count, 1)
 
         // Verify settings

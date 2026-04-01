@@ -9,6 +9,7 @@ public struct AppFeature {
 
     /// Stable ID for the demo job inserted during onboarding so the board isn't empty.
     static let onboardingDemoJobID = UUID(uuidString: "00000000-0000-0000-0000-DE0000000001")!
+    static let onboardingDemoSessionID = UUID(uuidString: "00000000-0000-0000-0000-DE0000000002")!
 
     @ObservableState
     public struct State: Equatable {
@@ -224,8 +225,8 @@ public struct AppFeature {
                 return .merge(
                     .send(.cuttle(.restoreFromSettings(
                         context,
-                        settings.globalChatHistory,
-                        settings.statusChatHistories
+                        settings.globalChatSessions,
+                        settings.statusChatSessions
                     ))),
                     settings.aiProvider == .acpAgent ? .send(.fetchACPRegistry) : .none,
                     shouldStartOnboarding ? .send(.cuttleOnboarding(.start)) : .none
@@ -304,7 +305,8 @@ public struct AppFeature {
                 state.cuttle.jobs = Array(state.jobs)
                 if case .job(let cuttleJobId) = state.cuttle.currentContext, cuttleJobId == id {
                     state.cuttle.currentContext = .global
-                    state.cuttle.chatMessages = state.cuttle.globalChatHistory
+                    state.cuttle.chatMessages = state.cuttle.globalChatSessions.last?.messages ?? []
+                    state.cuttle.activeSessionID = state.cuttle.globalChatSessions.last?.id
                     state.cuttle.tokenUsage = .zero
                     state.cuttle.error = nil
                     state.cuttle.acpSentSystemPrompt = false
@@ -409,7 +411,8 @@ public struct AppFeature {
                 state.cuttle.jobs = Array(state.jobs)
                 if case .job(let cuttleJobId) = state.cuttle.currentContext, cuttleJobId == id {
                     state.cuttle.currentContext = .global
-                    state.cuttle.chatMessages = state.cuttle.globalChatHistory
+                    state.cuttle.chatMessages = state.cuttle.globalChatSessions.last?.messages ?? []
+                    state.cuttle.activeSessionID = state.cuttle.globalChatSessions.last?.id
                     state.cuttle.tokenUsage = .zero
                     state.cuttle.error = nil
                     state.cuttle.acpSentSystemPrompt = false
@@ -433,8 +436,8 @@ public struct AppFeature {
 
             // MARK: - Cuttle
 
-            case .cuttle(.delegate(.jobChatUpdated(let jobId, let messages))):
-                state.jobs[id: jobId]?.chatHistory = messages
+            case .cuttle(.delegate(.jobChatUpdated(let jobId, let sessions))):
+                state.jobs[id: jobId]?.chatSessions = sessions
                 state.cuttle.jobs = Array(state.jobs)
                 return .merge(
                     saveJobs(state.jobs),
@@ -471,10 +474,13 @@ public struct AppFeature {
                     return .none
                 }
 
-            case .cuttle(.aiResponseReceived),
+            case .cuttle(.sendMessage),
+                 .cuttle(.aiResponseReceived),
                  .cuttle(.clearChat),
-                 .cuttle(.contextTransitionConfirmed),
-                 .cuttle(.switchContext):
+                 .cuttle(.switchContext),
+                 .cuttle(.sessionTitleGenerated),
+                 .cuttle(.selectSession),
+                 .cuttle(.deleteSession):
                 return .send(.saveCuttleState)
 
             case .cuttle:
@@ -482,8 +488,8 @@ public struct AppFeature {
 
             case .saveCuttleState:
                 state.settings.cuttleContext = state.cuttle.currentContext
-                state.settings.globalChatHistory = state.cuttle.globalChatHistory
-                state.settings.statusChatHistories = state.cuttle.statusChatHistories
+                state.settings.globalChatSessions = state.cuttle.globalChatSessions
+                state.settings.statusChatSessions = state.cuttle.statusChatSessions
                 return saveSettings(state.settings)
 
             // MARK: - History
@@ -1095,13 +1101,15 @@ public struct AppFeature {
             case .cuttleOnboarding(.delegate(.completed)),
                  .cuttleOnboarding(.delegate(.dismissed)):
                 state.settings.hasCuttleOnboardingCompleted = true
-                // Remove the demo job if it was inserted for the tour
+                // Remove demo content inserted for the tour
                 if state.jobs[id: Self.onboardingDemoJobID] != nil {
                     state.jobs.remove(id: Self.onboardingDemoJobID)
                     state.cuttle.jobs = Array(state.jobs)
                 }
+                state.cuttle.globalChatSessions.removeAll { $0.id == Self.onboardingDemoSessionID }
+                state.cuttle.isSessionSidebarVisible = false
                 return .merge(
-                    saveSettings(state.settings),
+                    .send(.saveCuttleState),
                     saveJobs(state.jobs)
                 )
 
@@ -1111,6 +1119,30 @@ public struct AppFeature {
 
             case .cuttleOnboarding(.delegate(.collapseCuttle)):
                 state.cuttle.isExpanded = false
+                return .none
+
+            case .cuttleOnboarding(.delegate(.showSessionSidebar)):
+                state.cuttle.isSessionSidebarVisible = true
+                // Insert a fake session so the sidebar isn't empty during onboarding
+                if state.cuttle.globalChatSessions.isEmpty {
+                    let fakeSession = ChatSession(
+                        id: Self.onboardingDemoSessionID,
+                        providerType: .acpAgent,
+                        agentName: "AI Assistant",
+                        messages: [
+                            ChatMessage(role: .user, content: "Which roles should I prioritize?"),
+                            ChatMessage(role: .assistant, content: "Based on your profile, I'd focus on the roles where you match 3+ of the listed requirements. Want me to compare your top prospects?"),
+                        ],
+                        createdAt: Date().addingTimeInterval(-3600),
+                        lastMessageAt: Date().addingTimeInterval(-3500)
+                    )
+                    state.cuttle.globalChatSessions.append(fakeSession)
+                }
+                return .none
+
+            case .cuttleOnboarding(.delegate(.hideSessionSidebar)):
+                state.cuttle.isSessionSidebarVisible = false
+                state.cuttle.globalChatSessions.removeAll { $0.id == Self.onboardingDemoSessionID }
                 return .none
 
             case .cuttleOnboarding(.delegate(.agentConnected(let agentId, let agentName))):

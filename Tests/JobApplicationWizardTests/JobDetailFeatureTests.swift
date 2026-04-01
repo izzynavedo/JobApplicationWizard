@@ -568,25 +568,28 @@ final class JobDetailFeatureTests: XCTestCase {
         XCTAssertEqual(decoded.content, "Test response")
     }
 
-    func testJobApplicationChatHistoryRoundTrip() throws {
+    func testJobApplicationChatSessionsRoundTrip() throws {
         var job = JobApplication.mock()
-        job.chatHistory = [
-            ChatMessage(role: .user, content: "Hello"),
-            ChatMessage(role: .assistant, content: "Hi!"),
-        ]
+        job.chatSessions = [ChatSession(
+            providerType: .claudeAPI,
+            messages: [
+                ChatMessage(role: .user, content: "Hello"),
+                ChatMessage(role: .assistant, content: "Hi!"),
+            ]
+        )]
         let data = try JSONEncoder().encode(job)
         let decoded = try JSONDecoder().decode(JobApplication.self, from: data)
-        XCTAssertEqual(decoded.chatHistory.count, 2)
-        XCTAssertEqual(decoded.chatHistory[0].role, .user)
-        XCTAssertEqual(decoded.chatHistory[1].role, .assistant)
+        XCTAssertEqual(decoded.chatSessions.count, 1)
+        XCTAssertEqual(decoded.chatSessions[0].messages.count, 2)
+        XCTAssertEqual(decoded.chatSessions[0].messages[0].role, .user)
+        XCTAssertEqual(decoded.chatSessions[0].messages[1].role, .assistant)
     }
 
-    func testJobApplicationEmptyChatHistoryNotEncoded() throws {
+    func testJobApplicationEmptyChatSessionsNotEncoded() throws {
         let job = JobApplication.mock()
         let data = try JSONEncoder().encode(job)
         let json = String(data: data, encoding: .utf8)!
-        // Empty chatHistory should not be in JSON (we skip encoding it)
-        XCTAssertFalse(json.contains("chatHistory"))
+        XCTAssertFalse(json.contains("chatSessions"))
     }
 
     // MARK: - moveJobRequested

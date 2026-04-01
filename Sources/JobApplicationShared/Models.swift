@@ -8,7 +8,7 @@ import UIKit
 
 // MARK: - Job Status
 
-public enum JobStatus: String, Codable, CaseIterable, Identifiable, Comparable {
+public enum JobStatus: String, Codable, CaseIterable, Identifiable, Comparable, Sendable {
     case wishlist = "Wishlist"
     case applied = "Applied"
     case phoneScreen = "Phone Screen"
@@ -73,7 +73,7 @@ public enum JobStatus: String, Codable, CaseIterable, Identifiable, Comparable {
 
 // MARK: - Label
 
-public struct JobLabel: Codable, Identifiable, Hashable, Equatable {
+public struct JobLabel: Codable, Identifiable, Hashable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var name: String
     public var colorHex: String
@@ -104,7 +104,7 @@ public struct JobLabel: Codable, Identifiable, Hashable, Equatable {
 
 // MARK: - Note
 
-public struct Note: Codable, Identifiable, Equatable {
+public struct Note: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var title: String = ""
     public var subtitle: String = ""
@@ -126,7 +126,7 @@ public struct Note: Codable, Identifiable, Equatable {
 
 // MARK: - Contact
 
-public struct Contact: Codable, Identifiable, Equatable {
+public struct Contact: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var name: String = ""
     public var title: String = ""
@@ -148,7 +148,7 @@ public struct Contact: Codable, Identifiable, Equatable {
 
 // MARK: - SubTask
 
-public struct SubTask: Identifiable, Codable, Equatable {
+public struct SubTask: Identifiable, Codable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var title: String
     public var isCompleted: Bool = false
@@ -164,7 +164,7 @@ public struct SubTask: Identifiable, Codable, Equatable {
 
 // MARK: - Interview Round
 
-public struct InterviewRound: Codable, Identifiable, Equatable {
+public struct InterviewRound: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var round: Int
     public var type: String = ""
@@ -190,7 +190,7 @@ public struct InterviewRound: Codable, Identifiable, Equatable {
 
 // MARK: - Job Document
 
-public struct JobDocument: Codable, Identifiable, Equatable {
+public struct JobDocument: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var filename: String
     public var documentType: DocumentType
@@ -220,7 +220,7 @@ public struct JobDocument: Codable, Identifiable, Equatable {
 
 // MARK: - Job Application
 
-public struct JobApplication: Codable, Identifiable, Equatable {
+public struct JobApplication: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var company: String = ""
     public var title: String = ""
@@ -241,7 +241,7 @@ public struct JobApplication: Codable, Identifiable, Equatable {
     public var excitement: Int = 3
     public var hasPDF: Bool = false
     public var pdfPath: String? = nil
-    public var chatHistory: [ChatMessage] = []
+    public var chatSessions: [ChatSession] = []
     public var documents: [JobDocument] = []
     public var tasks: [SubTask] = []
     public var atsProvider: ATSProvider?
@@ -271,12 +271,18 @@ public struct JobApplication: Codable, Identifiable, Equatable {
         case id, company, title, url, status, dateAdded, dateApplied
         case salary, location, jobDescription, noteCards
         case resumeUsed, coverLetter, labels, contacts, interviews
-        case isFavorite, excitement, hasPDF, pdfPath, chatHistory, documents, tasks, atsProvider, updatedAt
+        case isFavorite, excitement, hasPDF, pdfPath, chatSessions, documents, tasks, atsProvider, updatedAt
         case legacyNotes = "notes"
+    }
+
+    /// Decode-only keys for migrating legacy data formats.
+    private enum LegacyCodingKeys: String, CodingKey {
+        case chatHistory
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
         id           = try c.decodeIfPresent(UUID.self,            forKey: .id)           ?? UUID()
         company      = try c.decodeIfPresent(String.self,          forKey: .company)      ?? ""
         title        = try c.decodeIfPresent(String.self,          forKey: .title)        ?? ""
@@ -296,7 +302,16 @@ public struct JobApplication: Codable, Identifiable, Equatable {
         excitement   = try c.decodeIfPresent(Int.self,             forKey: .excitement)   ?? 3
         hasPDF       = try c.decodeIfPresent(Bool.self,            forKey: .hasPDF)       ?? false
         pdfPath      = try c.decodeIfPresent(String.self,          forKey: .pdfPath)
-        chatHistory  = try c.decodeIfPresent([ChatMessage].self,   forKey: .chatHistory)  ?? []
+        if let sessions = try c.decodeIfPresent([ChatSession].self, forKey: .chatSessions) {
+            chatSessions = sessions
+        } else if let old = try legacy.decodeIfPresent([ChatMessage].self, forKey: .chatHistory), !old.isEmpty {
+            chatSessions = [ChatSession(
+                providerType: .claudeAPI, messages: old,
+                createdAt: old.first?.timestamp ?? Date(), lastMessageAt: old.last?.timestamp ?? Date()
+            )]
+        } else {
+            chatSessions = []
+        }
         documents    = try c.decodeIfPresent([JobDocument].self,  forKey: .documents)    ?? []
         tasks        = try c.decodeIfPresent([SubTask].self,        forKey: .tasks)        ?? []
         atsProvider  = try c.decodeIfPresent(ATSProvider.self,     forKey: .atsProvider)
@@ -333,8 +348,8 @@ public struct JobApplication: Codable, Identifiable, Equatable {
         try c.encode(excitement,     forKey: .excitement)
         try c.encode(hasPDF,         forKey: .hasPDF)
         try c.encodeIfPresent(pdfPath, forKey: .pdfPath)
-        if !chatHistory.isEmpty {
-            try c.encode(chatHistory, forKey: .chatHistory)
+        if !chatSessions.isEmpty {
+            try c.encode(chatSessions, forKey: .chatSessions)
         }
         if !documents.isEmpty {
             try c.encode(documents, forKey: .documents)
@@ -347,7 +362,7 @@ public struct JobApplication: Codable, Identifiable, Equatable {
 
 // MARK: - Work Preference
 
-public enum WorkPreference: String, Codable, CaseIterable, Equatable {
+public enum WorkPreference: String, Codable, CaseIterable, Equatable, Sendable {
     case remote   = "Remote"
     case hybrid   = "Hybrid"
     case onSite   = "On-Site"
@@ -356,7 +371,7 @@ public enum WorkPreference: String, Codable, CaseIterable, Equatable {
 
 // MARK: - Company Profile
 
-public struct CompanyProfile: Codable, Identifiable, Equatable {
+public struct CompanyProfile: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var name: String
     public var website: String = ""
@@ -386,7 +401,7 @@ public struct CompanyProfile: Codable, Identifiable, Equatable {
 
 // MARK: - User Profile
 
-public struct UserProfile: Codable, Equatable {
+public struct UserProfile: Codable, Equatable, Sendable {
     public var name: String = ""
     public var currentTitle: String = ""
     public var location: String = ""
@@ -437,15 +452,15 @@ public struct ACPConnectionState: Equatable, Sendable {
 
 // MARK: - App Settings
 
-public struct AppSettings: Codable, Equatable {
+public struct AppSettings: Codable, Equatable, Sendable {
     // API key is stored in the system Keychain, not here.
     public var userProfile: UserProfile = UserProfile()
     public var defaultViewMode: ViewMode = .kanban
     public var aiProvider: AIProvider = .acpAgent
     public var selectedACPAgentId: String? = nil
     public var cuttleContext: CuttleContext? = nil
-    public var globalChatHistory: [ChatMessage] = []
-    public var statusChatHistories: [String: [ChatMessage]] = [:]
+    public var globalChatSessions: [ChatSession] = []
+    public var statusChatSessions: [String: [ChatSession]] = [:]
     public var agentActionMode: AgentActionMode = .applyImmediately
     public var autoProcessDocuments: Bool = false
     public var hasCuttleOnboardingCompleted: Bool = false
@@ -453,21 +468,48 @@ public struct AppSettings: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case userProfile, defaultViewMode, aiProvider, selectedACPAgentId
-        case cuttleContext, globalChatHistory, statusChatHistories
+        case cuttleContext, globalChatSessions, statusChatSessions
         case agentActionMode, autoProcessDocuments, hasCuttleOnboardingCompleted, companyProfiles
+    }
+
+    /// Legacy keys used only for migration decoding.
+    private enum LegacyCodingKeys: String, CodingKey {
+        case globalChatHistory, statusChatHistories
     }
 
     public init() {}
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
+        let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
         userProfile          = try c.decodeIfPresent(UserProfile.self,            forKey: .userProfile)          ?? UserProfile()
         defaultViewMode      = try c.decodeIfPresent(ViewMode.self,               forKey: .defaultViewMode)      ?? .kanban
         aiProvider           = try c.decodeIfPresent(AIProvider.self,             forKey: .aiProvider)           ?? .acpAgent
         selectedACPAgentId   = try c.decodeIfPresent(String.self,                 forKey: .selectedACPAgentId)
         cuttleContext        = try c.decodeIfPresent(CuttleContext.self,          forKey: .cuttleContext)
-        globalChatHistory    = try c.decodeIfPresent([ChatMessage].self,          forKey: .globalChatHistory)    ?? []
-        statusChatHistories  = try c.decodeIfPresent([String: [ChatMessage]].self, forKey: .statusChatHistories) ?? [:]
+        if let sessions = try c.decodeIfPresent([ChatSession].self, forKey: .globalChatSessions) {
+            globalChatSessions = sessions
+        } else if let old = try legacy.decodeIfPresent([ChatMessage].self, forKey: .globalChatHistory), !old.isEmpty {
+            globalChatSessions = [ChatSession(
+                providerType: .claudeAPI, messages: old,
+                createdAt: old.first?.timestamp ?? Date(), lastMessageAt: old.last?.timestamp ?? Date()
+            )]
+        } else {
+            globalChatSessions = []
+        }
+        if let sessions = try c.decodeIfPresent([String: [ChatSession]].self, forKey: .statusChatSessions) {
+            statusChatSessions = sessions
+        } else if let old = try legacy.decodeIfPresent([String: [ChatMessage]].self, forKey: .statusChatHistories) {
+            statusChatSessions = old.compactMapValues { msgs -> [ChatSession]? in
+                guard !msgs.isEmpty else { return nil }
+                return [ChatSession(
+                    providerType: .claudeAPI, messages: msgs,
+                    createdAt: msgs.first?.timestamp ?? Date(), lastMessageAt: msgs.last?.timestamp ?? Date()
+                )]
+            }
+        } else {
+            statusChatSessions = [:]
+        }
         agentActionMode      = try c.decodeIfPresent(AgentActionMode.self,        forKey: .agentActionMode)      ?? .applyImmediately
         autoProcessDocuments = try c.decodeIfPresent(Bool.self,                    forKey: .autoProcessDocuments) ?? false
         hasCuttleOnboardingCompleted = try c.decodeIfPresent(Bool.self,            forKey: .hasCuttleOnboardingCompleted) ?? false
@@ -477,7 +519,7 @@ public struct AppSettings: Codable, Equatable {
 
 // MARK: - App Data Export
 
-public struct AppDataExport: Codable, Equatable {
+public struct AppDataExport: Codable, Equatable, Sendable {
     public static let currentVersion = 1
     public var version: Int = Self.currentVersion
     public var exportedAt: Date = Date()
@@ -492,7 +534,7 @@ public struct AppDataExport: Codable, Equatable {
 
 // MARK: - AI Action
 
-public enum AIAction: String, CaseIterable, Equatable {
+public enum AIAction: String, CaseIterable, Equatable, Sendable {
     case chat = "Chat"
     case tailorResume = "Tailor Resume"
     case coverLetter = "Cover Letter"
@@ -502,13 +544,13 @@ public enum AIAction: String, CaseIterable, Equatable {
 
 // MARK: - Chat Message
 
-public struct ChatMessage: Codable, Identifiable, Equatable {
+public struct ChatMessage: Codable, Identifiable, Equatable, Sendable {
     public var id: UUID = UUID()
     public var role: Role
     public var content: String
     public var timestamp: Date = Date()
 
-    public enum Role: String, Codable, Equatable {
+    public enum Role: String, Codable, Equatable, Sendable {
         case user = "user"
         case assistant = "assistant"
     }
@@ -518,6 +560,58 @@ public struct ChatMessage: Codable, Identifiable, Equatable {
         self.role = role
         self.content = content
         self.timestamp = timestamp
+    }
+}
+
+// MARK: - Chat Session
+
+public struct ChatSession: Codable, Identifiable, Equatable, Sendable {
+    public var id: UUID
+    public var providerType: AIProvider
+    /// Optional agent display name (for ACP agents); nil for Claude API.
+    public var agentName: String? = nil
+    public var messages: [ChatMessage]
+    public var createdAt: Date
+    public var lastMessageAt: Date
+    /// LLM-generated title, nil until generated.
+    public var generatedTitle: String? = nil
+
+    /// Provider display name, derived from providerType and agentName.
+    public var providerName: String {
+        switch providerType {
+        case .acpAgent: return agentName ?? "ACP Agent"
+        case .claudeAPI: return "Claude API"
+        }
+    }
+
+    /// Display title: LLM-generated if available, otherwise first few words of the first user message.
+    public var displayTitle: String {
+        if let generatedTitle, !generatedTitle.isEmpty { return generatedTitle }
+        let first = messages.first(where: { $0.role == .user })?.content ?? ""
+        let words = first.split(separator: " ").prefix(4).joined(separator: " ")
+        return words.isEmpty ? "New Session" : words
+    }
+
+    /// Longer preview for the subtitle line.
+    public var preview: String {
+        let first = messages.first(where: { $0.role == .user })?.content ?? ""
+        return String(first.prefix(60))
+    }
+
+    public init(
+        id: UUID = UUID(),
+        providerType: AIProvider,
+        agentName: String? = nil,
+        messages: [ChatMessage] = [],
+        createdAt: Date = Date(),
+        lastMessageAt: Date = Date()
+    ) {
+        self.id = id
+        self.providerType = providerType
+        self.agentName = agentName
+        self.messages = messages
+        self.createdAt = createdAt
+        self.lastMessageAt = lastMessageAt
     }
 }
 

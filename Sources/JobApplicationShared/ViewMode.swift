@@ -1,6 +1,6 @@
 import Foundation
 
-public enum ViewMode: String, Codable, CaseIterable, Equatable {
+public enum ViewMode: String, Codable, CaseIterable, Equatable, Sendable {
     case kanban = "Kanban"
     case list = "List"
 
