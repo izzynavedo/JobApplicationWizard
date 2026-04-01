@@ -10,5 +10,10 @@ JobApplicationWizard.app
 JobApplicationWizard.dmg
 .env.local
 .claude/worktrees/
+.agents/
+build/
+commercial/
+default.profraw
+demo_data.json
 iOS/build/
 Sources/JobApplicationShared/Secrets.swift
